@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1a1208">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Bougies Paula — Mes Boutiques</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --amber:#c8860a;--amber-light:#f5c842;--amber-pale:#fdf3dc;--amber-dark:#7a4f00;
+  --bg:#faf7f2;--bg2:#f2ece0;--card:#ffffff;
+  --text:#1c1410;--text2:#6b5c44;--text3:#a89070;
+  --border:rgba(120,90,40,0.15);
+  --green:#2d6a3f;--green-bg:#eaf5ee;
+  --orange:#b85c00;--orange-bg:#fff1e0;
+  --red:#b02020;--red-bg:#fdeaea;
+  --radius:14px;--radius-sm:9px;
+  --shadow:0 2px 12px rgba(120,80,20,0.10);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;}
+
+/* HEADER */
+.header{background:var(--text);padding:14px 16px 10px;position:sticky;top:0;z-index:50;}
+.header h1{font-family:'DM Serif Display',serif;color:var(--amber-light);font-size:19px;font-weight:400;}
+.header-top{display:flex;align-items:center;justify-content:space-between;}
+.header-actions{display:flex;gap:6px;flex-wrap:wrap;}
+.hbtn{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);border-radius:var(--radius-sm);padding:6px 10px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;white-space:nowrap;}
+.hbtn:active{background:rgba(255,255,255,0.2);}
+
+/* BOUTIQUE SELECTOR */
+.boutique-bar{display:flex;gap:6px;padding:10px 12px 0;background:var(--text);}
+.b-btn{flex:1;text-align:center;padding:8px 4px;border-radius:var(--radius-sm);font-size:12px;color:rgba(255,255,255,0.5);background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);cursor:pointer;font-family:'DM Sans',sans-serif;}
+.b-btn.active{background:var(--amber);color:var(--text);border-color:var(--amber);font-weight:500;}
+
+/* STATS */
+.stats-row{display:grid;gap:8px;padding:12px 12px 0;}
+.stat-card{background:var(--card);border-radius:var(--radius-sm);padding:10px 8px;text-align:center;box-shadow:var(--shadow);}
+.stat-val{font-size:17px;font-weight:500;color:var(--text);line-height:1;}
+.stat-val.ok{color:var(--green);}
+.stat-lbl{font-size:10px;color:var(--text3);margin-top:3px;}
+
+/* TABS */
+.tabs{display:flex;padding:10px 12px 0;gap:5px;}
+.tab{flex:1;text-align:center;padding:8px 2px;border-radius:var(--radius-sm);font-size:11px;color:var(--text2);background:transparent;border:1px solid var(--border);cursor:pointer;}
+.tab.active{background:var(--text);color:var(--amber-light);border-color:var(--text);font-weight:500;}
+
+/* SEARCH */
+.search-bar{padding:10px 12px 6px;}
+.search-bar input{width:100%;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;}
+
+/* PILLS */
+.filter-pills{display:flex;gap:6px;padding:0 12px 8px;overflow-x:auto;scrollbar-width:none;}
+.filter-pills::-webkit-scrollbar{display:none;}
+.pill{flex-shrink:0;padding:5px 12px;border-radius:20px;font-size:12px;border:1px solid var(--border);color:var(--text2);background:var(--card);cursor:pointer;}
+.pill.active{background:var(--text);color:var(--amber-light);border-color:var(--text);}
+
+/* PRODUCTS */
+.product-list{padding:0 12px 80px;}
+.product-card{background:var(--card);border-radius:var(--radius);margin-bottom:8px;box-shadow:var(--shadow);overflow:hidden;border:1px solid var(--border);}
+.product-main{display:flex;align-items:center;padding:12px 14px;gap:10px;}
+.product-info{flex:1;min-width:0;}
+.product-nom{font-size:15px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.product-ref{font-size:11px;color:var(--text3);margin-top:1px;}
+.product-prix{font-size:14px;font-weight:500;color:var(--amber-dark);white-space:nowrap;margin-right:4px;}
+.qty-ctrl{display:flex;align-items:center;background:var(--bg2);border-radius:30px;padding:2px;}
+.qty-btn{width:36px;height:36px;border-radius:50%;border:none;background:transparent;font-size:20px;font-weight:300;color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.qty-btn.minus:active{background:var(--red-bg);color:var(--red);}
+.qty-btn.plus:active{background:var(--green-bg);color:var(--green);}
+.qty-val{min-width:32px;text-align:center;font-size:17px;font-weight:500;color:var(--text);}
+.status-bar{display:flex;align-items:center;justify-content:space-between;padding:6px 14px 10px;border-top:1px solid var(--border);}
+.badge{display:inline-block;font-size:11px;padding:3px 9px;border-radius:20px;font-weight:500;}
+.badge-ok{background:var(--green-bg);color:var(--green);}
+.badge-crit{background:var(--red-bg);color:var(--red);}
+.edit-link{font-size:12px;color:var(--text3);cursor:pointer;padding:4px 0;}
+.info-bar{display:flex;border-top:1px solid var(--border);}
+.info-cell{flex:1;padding:7px 10px;text-align:center;border-right:1px solid var(--border);}
+.info-cell:last-child{border-right:none;}
+.info-cell-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.4px;}
+.info-cell-val{font-size:14px;font-weight:500;color:var(--text);margin-top:1px;}
+.info-cell-val.sold{color:var(--red);}
+.info-cell-val.value{color:var(--amber-dark);}
+
+/* FAB */
+.fab{position:fixed;bottom:20px;right:16px;width:56px;height:56px;border-radius:50%;background:var(--text);color:var(--amber-light);font-size:28px;border:none;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;z-index:40;}
+
+.empty{text-align:center;padding:2.5rem 1rem;color:var(--text3);font-size:14px;}
+.empty-icon{font-size:40px;margin-bottom:8px;}
+
+/* HISTORY */
+.hist-list{padding:0 12px 80px;}
+.hist-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px 14px;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center;gap:10px;}
+.hist-left{flex:1;min-width:0;}
+.hist-nom{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hist-ref{font-size:11px;color:var(--text3);margin-top:1px;}
+.hist-date{font-size:11px;color:var(--text3);margin-top:2px;}
+.hist-right{text-align:right;flex-shrink:0;}
+.hist-delta{font-size:16px;font-weight:500;}
+.hist-delta.in{color:var(--green);}
+.hist-delta.out{color:var(--red);}
+.hist-after{font-size:11px;color:var(--text3);}
+
+/* STATS TAB */
+.stats-content{padding:10px 12px 80px;}
+.month-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px;}
+.month-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
+.month-title{font-family:'DM Serif Display',serif;font-size:17px;color:var(--text);}
+.month-ca{font-size:16px;font-weight:500;color:var(--amber-dark);}
+.month-bar-bg{background:var(--bg2);border-radius:4px;height:6px;margin-bottom:8px;}
+.month-bar{background:var(--amber);border-radius:4px;height:6px;}
+.month-sub{font-size:12px;color:var(--text3);margin-bottom:6px;}
+.month-prod{display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-top:1px solid var(--border);}
+.month-prod-nom{color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;}
+.month-prod-val{color:var(--text);font-weight:500;margin-left:8px;flex-shrink:0;}
+
+/* RESULT TAB */
+.result-content{padding:10px 12px 80px;}
+.result-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px;}
+.result-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;}
+.result-month{font-family:'DM Serif Display',serif;font-size:17px;color:var(--text);}
+.result-net{font-size:18px;font-weight:500;}
+.result-net.pos{color:var(--green);}
+.result-net.neg{color:var(--red);}
+.result-row{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-top:1px solid var(--border);}
+.result-row-lbl{color:var(--text2);}
+.result-row-val{font-weight:500;color:var(--text);}
+.result-row-val.minus{color:var(--red);}
+.result-row-val.urssaf{color:var(--orange);}
+.result-row.total-line{background:var(--bg2);margin:4px -14px -14px;padding:8px 14px;border-radius:0 0 var(--radius) var(--radius);border-top:1.5px solid var(--border);}
+.result-row.total-line .result-row-lbl{font-weight:500;color:var(--text);}
+.result-info{font-size:11px;color:var(--text3);margin:6px 0 2px;font-style:italic;}
+
+/* DASHBOARD */
+.dashboard-content{padding:10px 12px 80px;}
+.dash-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px;}
+.dash-title{font-family:'DM Serif Display',serif;font-size:16px;color:var(--text);margin-bottom:10px;}
+.dash-row{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-top:1px solid var(--border);}
+.dash-lbl{color:var(--text2);}
+.dash-val{font-weight:500;color:var(--text);}
+.dash-val.ok{color:var(--green);}
+
+/* MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100;align-items:flex-end;justify-content:center;}
+.modal-bg.open{display:flex;}
+.modal{background:var(--bg);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:20px 16px 32px;max-height:85vh;overflow-y:auto;}
+.modal-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px;}
+.modal h2{font-family:'DM Serif Display',serif;font-size:20px;font-weight:400;color:var(--text);margin-bottom:16px;}
+.modal label{font-size:12px;font-weight:500;color:var(--text2);display:block;margin-bottom:5px;margin-top:14px;text-transform:uppercase;letter-spacing:0.5px;}
+.modal input{width:100%;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:13px 14px;font-size:15px;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;}
+.modal-footer{display:flex;gap:10px;margin-top:20px;}
+.btn-cancel{flex:1;padding:14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:transparent;color:var(--text2);font-size:15px;font-family:'DM Sans',sans-serif;cursor:pointer;}
+.btn-save{flex:2;padding:14px;border-radius:var(--radius-sm);border:none;background:var(--text);color:var(--amber-light);font-size:15px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;}
+
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:#fff;font-size:13px;padding:10px 18px;border-radius:30px;opacity:0;transition:all 0.25s;z-index:200;white-space:nowrap;pointer-events:none;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div>
+      <h1>Bougies Paula</h1>
+    </div>
+    <div class="header-actions">
+      <button class="hbtn" id="btn-params" onclick="openParamsBoutique()">⚙️ Params</button>
+      <button class="hbtn" onclick="exportXLSX()">↓ Excel</button>
+      <button class="hbtn" onclick="exportDonnees()">💾</button>
+      <button class="hbtn" onclick="document.getElementById('importDonneesInput').click()">♻️</button>
+      <input type="file" id="importDonneesInput" accept=".json" style="display:none" onchange="importDonnees(event)">
+    </div>
+  </div>
+</div>
+
+<!-- Sélecteur boutique (généré dynamiquement) -->
+<div class="boutique-bar" id="boutique-bar"></div>
+
+<!-- Stats -->
+<div class="stats-row" style="grid-template-columns:repeat(3,1fr)">
+  <div class="stat-card"><div class="stat-val ok" id="s-vendu-nb">0</div><div class="stat-lbl">Art. vendus</div></div>
+  <div class="stat-card"><div class="stat-val ok" id="s-ca">0€</div><div class="stat-lbl">CA total</div></div>
+  <div class="stat-card"><div class="stat-val" id="s-valeur">0€</div><div class="stat-lbl">Valeur stock</div></div>
+</div>
+<div class="stats-row" style="grid-template-columns:repeat(3,1fr);padding-top:8px">
+  <div class="stat-card"><div class="stat-val ok" id="s-ca-mois">0€</div><div class="stat-lbl" id="s-ca-mois-lbl">CA ce mois</div></div>
+  <div class="stat-card"><div class="stat-val" id="s-ca-prev">0€</div><div class="stat-lbl" id="s-ca-prev-lbl">CA mois préc.</div></div>
+  <div class="stat-card"><div class="stat-val" id="s-qty-total">0</div><div class="stat-lbl">En stock</div></div>
+</div>
+
+<!-- Tabs boutique (masqués en mode Global) -->
+<div id="boutique-tabs">
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('stock')">📦 Stocks</div>
+    <div class="tab" onclick="switchTab('stats')">📊 Stats</div>
+    <div class="tab" onclick="switchTab('result')">💰 Résultat</div>
+    <div class="tab" onclick="switchTab('history')">📋 Historique</div>
+  </div>
+
+  <div id="tab-stock">
+    <div class="search-bar" style="display:flex;gap:8px;align-items:center">
+      <input type="text" id="searchInput" placeholder="Rechercher un produit..." oninput="renderList()" autocomplete="off">
+      <button onclick="document.getElementById('xlsxInput').click()" style="flex-shrink:0;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;color:var(--text2);font-family:'DM Sans',sans-serif;cursor:pointer;white-space:nowrap">↑ Catalogue</button>
+      <input type="file" id="xlsxInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="importExcel(event)">
+    </div>
+    <div class="filter-pills">
+      <div class="pill active" onclick="setFilter(this,'')">Tous</div>
+      <div class="pill" onclick="setFilter(this,'ok')">En stock</div>
+      <div class="pill" onclick="setFilter(this,'crit')">Ruptures</div>
+    </div>
+    <div class="product-list" id="productList"></div>
+    <div class="empty" id="emptyMsg" style="display:none">
+      <div class="empty-icon">🕯️</div>Aucun produit trouvé
+    </div>
+  </div>
+
+  <div id="tab-stats" style="display:none">
+    <div class="stats-content" id="statsContent"></div>
+  </div>
+
+  <div id="tab-result" style="display:none">
+    <div class="result-content" id="resultContent"></div>
+  </div>
+
+  <div id="tab-history" style="display:none">
+    <div class="hist-list" id="histList"></div>
+    <div class="empty" id="histEmpty" style="display:none">
+      <div class="empty-icon">📋</div>Aucun mouvement enregistré
+    </div>
+  </div>
+</div>
+
+<!-- Dashboard Global -->
+<div id="tab-global" style="display:none">
+  <div class="dashboard-content" id="dashboardContent"></div>
+</div>
+
+<button class="fab" id="fabBtn" onclick="openAdd()">+</button>
+
+<!-- Modal produit -->
+<div class="modal-bg" id="editModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2 id="modalTitle">Ajouter</h2>
+    <label>Code Article</label><input type="text" id="f-ref" autocomplete="off">
+    <label>Nom</label><input type="text" id="f-nom" autocomplete="off">
+    <label>Prix (€)</label><input type="number" id="f-prix" step="0.01" min="0" inputmode="decimal">
+    <label>Quantité en stock</label><input type="number" id="f-qty" min="0" inputmode="numeric">
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">Annuler</button>
+      <button class="btn-save" onclick="saveProduct()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal CA forfaitaire -->
+<div class="modal-bg" id="manualCAModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>CA forfaitaire</h2>
+    <label>Mois</label><input type="month" id="mca-month">
+    <label>Montant (€)</label><input type="number" id="mca-amount" step="0.01" min="0" inputmode="decimal">
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="document.getElementById('manualCAModal').classList.remove('open')">Annuler</button>
+      <button class="btn-save" onclick="saveManualCA()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal paramètres boutique -->
+<div class="modal-bg" id="paramsBoutiqueModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2 id="params-title">Paramètres boutique</h2>
+    <label>Nom</label>
+    <input type="text" id="p-nom" autocomplete="off">
+    <label>Emoji</label>
+    <input type="text" id="p-emoji" maxlength="2">
+    <label>Commission (%)</label>
+    <input type="number" id="p-commission" step="0.1" min="0" max="100" inputmode="decimal">
+    <label>Loyer standard (€/mois)</label>
+    <input type="number" id="p-loyer" step="0.01" min="0" inputmode="decimal">
+    <label>Date d'ouverture (si boutique récente)</label>
+    <input type="date" id="p-ouverture">
+    <label>Loyer du 1er mois (€) — si mois incomplet</label>
+    <input type="number" id="p-loyer-premier" step="0.01" min="0" inputmode="decimal" placeholder="Laisser vide si mois complet">
+    <div style="font-size:11px;color:var(--text3);margin-top:6px;font-style:italic">
+      Le loyer du 1er mois s'applique uniquement au mois d'ouverture. Le loyer standard s'applique dès le mois suivant.
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="document.getElementById('paramsBoutiqueModal').classList.remove('open')">Annuler</button>
+      <button class="btn-save" onclick="saveParamsBoutique()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal historique global -->
+<div class="modal-bg" id="ghistModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>Résultat mensuel global</h2>
+    <div id="ghist-month-lbl" style="font-size:13px;color:var(--text3);margin-bottom:4px;margin-top:-8px"></div>
+    <input type="hidden" id="ghist-mk">
+    <label>Mois (AAAA-MM)</label><input type="month" id="ghist-mk-input" oninput="document.getElementById('ghist-mk').value=this.value;document.getElementById('ghist-month-lbl').textContent=this.value;">
+    <label>CA total (€)</label><input type="number" id="ghist-ca" step="0.01" min="0" inputmode="decimal">
+    <label>Commissions (€)</label><input type="number" id="ghist-comm" step="0.01" min="0" inputmode="decimal">
+    <label>Virements (€)</label><input type="number" id="ghist-virement" step="0.01" min="0" inputmode="decimal">
+    <label>Loyers (€)</label><input type="number" id="ghist-loyer" step="0.01" min="0" inputmode="decimal">
+    <label>URSSAF (€)</label><input type="number" id="ghist-urssaf" step="0.01" min="0" inputmode="decimal">
+    <label>💶 Reste net (€) *</label><input type="number" id="ghist-net" step="0.01" inputmode="decimal" style="border-color:var(--amber)">
+    <div style="font-size:11px;color:var(--text3);margin-top:6px;font-style:italic">* Seuls les mois avec net &gt; 0 sont conservés automatiquement. Vous pouvez saisir n'importe quelle valeur ici.</div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="document.getElementById('ghistModal').classList.remove('open')">Annuler</button>
+      <button class="btn-save" onclick="saveEditGlobalHist()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="newBoutiqueModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>Nouvelle boutique</h2>
+    <label>Nom de la boutique</label>
+    <input type="text" id="nb-nom" placeholder="Ex: Ma boutique" autocomplete="off">
+    <label>Emoji (optionnel)</label>
+    <input type="text" id="nb-emoji" placeholder="🏪" maxlength="2">
+    <label>Commission (%)</label>
+    <input type="number" id="nb-commission" placeholder="20" min="0" max="100" inputmode="decimal">
+    <label>Loyer mensuel (€)</label>
+    <input type="number" id="nb-loyer" placeholder="81" min="0" inputmode="decimal">
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="document.getElementById('newBoutiqueModal').classList.remove('open')">Annuler</button>
+      <button class="btn-save" onclick="saveNewBoutique()">Créer</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// CONFIGURATION DES BOUTIQUES — dynamique
+// ═══════════════════════════════════════════════════════════
+const BOUTIQUES_DEFAULT = [
+  { id: 'qg',         nom: 'QG — Quimper', emoji: '🏪', storageKey: 'qg_bougies_v2',         loyer: 81, loyerPremierMois: null, ouverture: null, commission: 0.20 },
+  { id: 'lanester',   nom: 'Lanester',     emoji: '🏪', storageKey: 'lbda_bougies_v2',        loyer: 81, loyerPremierMois: null, ouverture: null, commission: 0.20 },
+  { id: 'danslalune', nom: 'Dans la Lune', emoji: '🌙', storageKey: 'danslalune_bougies_v3',  loyer: 50, loyerPremierMois: null, ouverture: null, commission: 0.10 },
+];
+let BOUTIQUES = [];
+function loadBoutiquesConfig(){
+  try { const s=localStorage.getItem('boutiques_config_v2'); BOUTIQUES=s?JSON.parse(s):JSON.parse(JSON.stringify(BOUTIQUES_DEFAULT)); }
+  catch(e){ BOUTIQUES=JSON.parse(JSON.stringify(BOUTIQUES_DEFAULT)); }
+}
+function saveBoutiquesConfig(){ localStorage.setItem('boutiques_config_v2',JSON.stringify(BOUTIQUES)); }
+
+const URSSAF_RATE = 0.123;
+
+// Catalogue de base QG
+const RAW_QG = [
+  {ref:'QGBGP000',nom:'DIVERS BGP',prix:0},
+  {ref:'QGBGP253791',nom:'Pot beige',prix:20},
+  {ref:'QGBGP255152',nom:'La douce',prix:12},
+  {ref:'QGBGP255153',nom:'La spirale',prix:14},
+  {ref:'QGBGP255154',nom:'Coupelle rose',prix:23},
+  {ref:'QGBGP255155',nom:'Pot vieux rose',prix:20},
+  {ref:'QGBGP255156',nom:'Bougie Fleur',prix:9},
+  {ref:'QGBGP255163',nom:'Pot rose',prix:20},
+  {ref:'QGBGP255169',nom:'Pot rouge 1',prix:20},
+  {ref:'QGBGP255211',nom:'Ours Teddy',prix:17},
+  {ref:'QGBGP255212',nom:'La prestigieuse',prix:17},
+  {ref:'QGBGP255214',nom:"L'entremetteuse",prix:15},
+  {ref:'QGBGP256751',nom:'Pot rose jaune',prix:20},
+  {ref:'QGBGP256757',nom:'Pot terra cotta',prix:20},
+  {ref:'QGBGP256758',nom:'Pot parme',prix:20},
+  {ref:'QGBGP256779',nom:'Corbeille',prix:30},
+  {ref:'QGBGP256781',nom:'Coupelle beige',prix:25},
+  {ref:'QGBGP256782',nom:'Coupelle jaune',prix:23},
+  {ref:'QGBGP256783',nom:'Coupelle verte',prix:25},
+  {ref:'QGBGP256784',nom:'Coupelle moutarde',prix:25},
+  {ref:'QGBGP256785',nom:'Coupelle jaune (2)',prix:25},
+  {ref:'QGBGP256786',nom:'Coupelle rose (2)',prix:25},
+  {ref:'QGBGP256787',nom:'Coupelle beige 7f',prix:27},
+  {ref:'QGBGP256788',nom:'Sac noir vieux rose',prix:35},
+  {ref:'QGBGP256789',nom:'Vase rose',prix:17},
+  {ref:'QGBGP256790',nom:'Vase rouge',prix:17},
+  {ref:'QGBGP256792',nom:'Vase mauve',prix:17},
+  {ref:'QGBGP256793',nom:'Vase terra cotta',prix:17},
+  {ref:'QGBGP256796',nom:'Grand pot blanc',prix:35},
+  {ref:'QGBGP256799',nom:'Sac noir - rouge et blanc',prix:35},
+  {ref:'QGBGP256806',nom:'Boite carton rouge et blanc',prix:37},
+  {ref:'QGBGP256809',nom:'Boite florale',prix:35},
+  {ref:'QGBGP256821',nom:'Composition vieux rose',prix:25},
+  {ref:'QGBGP256824',nom:'Composition vieux rose (2)',prix:28},
+  {ref:'QGBGP256827',nom:'Composition moutarde',prix:28},
+  {ref:'QGBGP256829',nom:'Composition rose',prix:27},
+  {ref:'QGBGP257994',nom:'Bougies Delta',prix:12},
+  {ref:'QGBGP257995',nom:'Bougie big rose',prix:14},
+  {ref:'QGBGP257996',nom:'Bougie Maman ours',prix:12},
+  {ref:'QGBGP257997',nom:'Bougie tressée',prix:12},
+  {ref:'QGBGP257998',nom:'Bougie coeur',prix:11},
+  {ref:'QGBGP257999',nom:'Bougie ondulée',prix:15},
+  {ref:'QGBGP258276',nom:'Pot violet',prix:20},
+  {ref:'QGBGP266330',nom:'Boite Fleur',prix:12},
+  {ref:'QGBGP266332',nom:'Boite cœur',prix:10},
+  {ref:'QGBGP266349',nom:'Rose fête des mères',prix:9.5},
+  {ref:'QGBGP267000',nom:'Centre de table',prix:48},
+  {ref:'QGBGP268592',nom:'Composition verte',prix:28},
+  {ref:'QGBGP268633',nom:'Plateau ovale 3 bougies',prix:20},
+  {ref:'QGBGP268726',nom:'Plateau carré',prix:10},
+  {ref:'QGBGP268730',nom:'Plateau hexagonale',prix:10},
+  {ref:'QGBGP268731',nom:'Plateau ovale',prix:12},
+  {ref:'QGBGP268837',nom:'Plateau rond',prix:10},
+  {ref:'QGBGP268884',nom:'Ourson',prix:8},
+];
+
+// ═══════════════════════════════════════════════════════════
+// ÉTAT GLOBAL
+// ═══════════════════════════════════════════════════════════
+let currentBoutique = 0; // 0=QG, 1=LBDA, 2=DanslaLune, 3=Global
+let products = [], history = [], salesHistory = [], manualCA = {};
+let editIdx = null, activeFilter = '';
+
+// ═══════════════════════════════════════════════════════════
+// UTILITAIRES
+// ═══════════════════════════════════════════════════════════
+function monthKey(date){ const d=new Date(date); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+function fmtMonth(key){ const [y,m]=key.split('-'); return ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'][parseInt(m)-1]+' '+y; }
+function sortProds(arr){ return arr.sort((a,b)=>a.nom.localeCompare(b.nom,'fr')); }
+function getLoyer(mk){ const b=BOUTIQUES[currentBoutique]; return mk.endsWith('-04')?b.loyerAvril:b.loyer; }
+function calcResult(ca,mk){
+  const loyer=getLoyer(mk);
+  const commission=parseFloat((ca*COMMISSION).toFixed(2));
+  const virementLBDA=parseFloat((ca-commission).toFixed(2));
+  const urssaf=parseFloat((ca*URSSAF_RATE).toFixed(2));
+  const caApres=parseFloat((ca-commission-loyer).toFixed(2));
+  const net=parseFloat((caApres-urssaf).toFixed(2));
+  return {ca,commission,virementLBDA,loyer,urssaf,caApres,net};
+}
+
+// ═══════════════════════════════════════════════════════════
+// PERSISTENCE PAR BOUTIQUE
+// ═══════════════════════════════════════════════════════════
+function getRaw(idx){
+  if(idx===0) return RAW_QG;
+  return []; // LBDA et Dans la Lune : catalogue vide → import Excel
+}
+
+function initProducts(idx){
+  products = sortProds(getRaw(idx).map(p=>({...p,qty:0,sold:0})));
+}
+
+function loadData(idx){
+  // Toujours partir d'un état vierge
+  products = []; history = []; salesHistory = []; manualCA = {};
+  // Pour QG uniquement, charger le catalogue de base
+  if(BOUTIQUES[idx] && BOUTIQUES[idx].id === 'qg'){
+    products = sortProds(RAW_QG.map(p=>({...p,qty:0,sold:0})));
+  }
+  try {
+    const raw = localStorage.getItem(BOUTIQUES[idx].storageKey);
+    if(!raw) return;
+    const data = JSON.parse(raw);
+    if(data.stocks && data.stocks.length > 0){
+      if(BOUTIQUES[idx].id === 'qg'){
+        // Fusionner avec catalogue de base
+        data.stocks.forEach(s=>{
+          const p=products.find(x=>x.ref===s.ref);
+          if(p){ p.qty=Number(s.qty)||0; p.sold=Number(s.sold)||0; }
+          else products.push({ref:s.ref,nom:s.nom||s.ref,prix:Number(s.prix)||0,qty:Number(s.qty)||0,sold:Number(s.sold)||0});
+        });
+      } else {
+        // Pour les autres boutiques, utiliser exactement les données sauvegardées
+        products = data.stocks.map(s=>({ref:s.ref,nom:s.nom||s.ref,prix:Number(s.prix)||0,qty:Number(s.qty)||0,sold:Number(s.sold)||0}));
+      }
+      sortProds(products);
+    }
+    history      = data.history      || [];
+    salesHistory = data.salesHistory || [];
+    manualCA     = data.manualCA     || {};
+  } catch(e){ console.warn('Erreur chargement:',e); }
+}
+
+function saveData(){
+  const b = BOUTIQUES[currentBoutique];
+  if(!b) return; // sécurité
+  try {
+    localStorage.setItem(b.storageKey, JSON.stringify({
+      stocks: products.map(p=>({ref:p.ref,nom:p.nom,prix:p.prix,qty:p.qty,sold:p.sold||0})),
+      history: history.slice(0,300),
+      salesHistory: salesHistory.slice(0,3000),
+      manualCA
+    }));
+  } catch(e){ console.warn('Erreur sauvegarde:',e); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDU DE LA BARRE BOUTIQUES
+// ═══════════════════════════════════════════════════════════
+function renderBoutiqueBar(){
+  const bar = document.getElementById('boutique-bar');
+  bar.innerHTML = BOUTIQUES.map((b,i)=>
+    `<button class="b-btn${i===currentBoutique?' active':''}" onclick="switchBoutique(${i})">${b.emoji} ${b.nom.split('—')[0].split(' ')[0]}</button>`
+  ).join('')
+  + `<button class="b-btn" onclick="switchBoutique(${BOUTIQUES.length})">📊</button>`
+  + `<button class="b-btn" onclick="openNewBoutique()" style="background:rgba(255,255,255,0.04);border-style:dashed">＋</button>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// NAVIGATION BOUTIQUES
+// ═══════════════════════════════════════════════════════════
+function switchBoutique(idx){
+  currentBoutique = idx;
+  renderBoutiqueBar();
+
+  const isGlobal = idx >= BOUTIQUES.length;
+  document.getElementById('boutique-tabs').style.display = isGlobal?'none':'';
+  document.getElementById('tab-global').style.display    = isGlobal?'':'none';
+  document.getElementById('fabBtn').style.display        = isGlobal?'none':'';
+  document.getElementById('btn-params').style.display    = isGlobal?'none':'';
+
+  if(!isGlobal){
+    loadData(idx);
+    activeFilter='';
+    document.getElementById('searchInput').value='';
+    document.querySelectorAll('.pill').forEach((p,i)=>p.classList.toggle('active',i===0));
+    switchTab('stock');
+    renderList();
+    updateStats();
+  } else {
+    renderDashboard();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// STATS
+// ═══════════════════════════════════════════════════════════
+function updateStats(){
+  const valStock = products.reduce((s,p)=>s+p.qty*p.prix,0);
+  document.getElementById('s-valeur').textContent = valStock.toFixed(2)+' €';
+  const totalSold = products.reduce((s,p)=>s+(p.sold||0),0);
+  const caProduits = products.reduce((s,p)=>s+(p.sold||0)*p.prix,0);
+  const caForfeits = Object.values(manualCA).reduce((s,v)=>s+v,0);
+  const caTotal = caProduits+caForfeits;
+  document.getElementById('s-vendu-nb').textContent = totalSold;
+  document.getElementById('s-ca').textContent = caTotal.toFixed(2)+' €';
+  const qtyTotal = products.reduce((s,p)=>s+p.qty,0);
+  document.getElementById('s-qty-total').textContent = qtyTotal;
+  const now=new Date();
+  const curKey=monthKey(now);
+  const prevKey=monthKey(new Date(now.getFullYear(),now.getMonth()-1,1));
+  let caMois=0,caPrev=0;
+  salesHistory.forEach(s=>{ if(s.month===curKey) caMois+=s.amount; if(s.month===prevKey) caPrev+=s.amount; });
+  caMois+=manualCA[curKey]||0; caPrev+=manualCA[prevKey]||0;
+  document.getElementById('s-ca-mois').textContent = caMois.toFixed(2)+' €';
+  document.getElementById('s-ca-prev').textContent = caPrev.toFixed(2)+' €';
+  document.getElementById('s-ca-mois-lbl').textContent = 'CA '+fmtMonth(curKey);
+  document.getElementById('s-ca-prev-lbl').textContent = fmtMonth(prevKey);
+}
+
+// ═══════════════════════════════════════════════════════════
+// NAVIGATION TABS
+// ═══════════════════════════════════════════════════════════
+function switchTab(t){
+  ['stock','stats','result','history'].forEach((tab,i)=>{
+    document.querySelectorAll('.tab')[i].classList.toggle('active',tab===t);
+    document.getElementById('tab-'+tab).style.display=(tab===t)?'':'none';
+  });
+  if(t==='history') renderHistory();
+  if(t==='stats')   renderStats();
+  if(t==='result')  renderResult();
+}
+
+function setFilter(el,val){
+  activeFilter=val;
+  document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  renderList();
+}
+
+// ═══════════════════════════════════════════════════════════
+// LISTE PRODUITS
+// ═══════════════════════════════════════════════════════════
+function getFiltered(){
+  const q=document.getElementById('searchInput').value.toLowerCase();
+  return products.filter(p=>{
+    if(q&&!p.ref.toLowerCase().includes(q)&&!p.nom.toLowerCase().includes(q)) return false;
+    if(activeFilter==='crit'&&p.qty!==0) return false;
+    if(activeFilter==='ok'&&p.qty===0) return false;
+    return true;
+  });
+}
+
+function renderList(){
+  const rows=getFiltered();
+  const el=document.getElementById('productList');
+  const empty=document.getElementById('emptyMsg');
+  if(!rows.length){ el.innerHTML=''; empty.style.display=''; return; }
+  empty.style.display='none';
+  el.innerHTML=rows.map(p=>{
+    const idx=products.indexOf(p);
+    const bc=p.qty===0?'badge-crit':'badge-ok';
+    const bt=p.qty===0?'Rupture':'Ok';
+    const ca=((p.sold||0)*p.prix).toFixed(2);
+    return `<div class="product-card">
+      <div class="product-main">
+        <div class="product-info">
+          <div class="product-nom">${p.nom}</div>
+          <div class="product-ref">${p.ref}</div>
+        </div>
+        <div class="product-prix">${p.prix?p.prix.toFixed(2)+' €':'—'}</div>
+        <div class="qty-ctrl">
+          <button class="qty-btn minus" ontouchstart="" onclick="changeQty(${idx},-1)">−</button>
+          <span class="qty-val" id="qty-${idx}">${p.qty}</span>
+          <button class="qty-btn plus" ontouchstart="" onclick="changeQty(${idx},1)">+</button>
+        </div>
+      </div>
+      <div class="status-bar">
+        <span class="badge ${bc}" id="badge-${idx}">${bt}</span>
+        <span class="edit-link" onclick="openEdit(${idx})">Modifier ›</span>
+      </div>
+      <div class="info-bar">
+        <div class="info-cell" style="flex:1.4">
+          <div class="info-cell-lbl">Qté vendue</div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:4px;margin-top:2px">
+            <button class="qty-btn minus" ontouchstart="" onclick="changeSold(${idx},-1)" style="width:28px;height:28px;font-size:17px">−</button>
+            <span class="info-cell-val sold" id="sold-${idx}" style="min-width:22px;text-align:center">${p.sold||0}</span>
+            <button class="qty-btn plus" ontouchstart="" onclick="changeSold(${idx},1)" style="width:28px;height:28px;font-size:17px">+</button>
+          </div>
+        </div>
+        <div class="info-cell" style="flex:1.6">
+          <div class="info-cell-lbl">CA vendu</div>
+          <div class="info-cell-val value" id="ca-${idx}">${ca} €</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+// MOUVEMENTS STOCK & VENTES
+// ═══════════════════════════════════════════════════════════
+function changeQty(idx,delta){
+  const p=products[idx];
+  const newQty=Math.max(0,p.qty+delta);
+  if(newQty===p.qty) return;
+  const now=new Date();
+  history.unshift({date:now.toLocaleDateString('fr-FR')+' '+now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),ref:p.ref,nom:p.nom,type:delta>0?'in':'out',qty:Math.abs(delta),after:newQty});
+  p.qty=newQty;
+  const qEl=document.getElementById('qty-'+idx);
+  const bEl=document.getElementById('badge-'+idx);
+  if(qEl) qEl.textContent=newQty;
+  if(bEl){ bEl.className='badge '+(newQty===0?'badge-crit':'badge-ok'); bEl.textContent=newQty===0?'Rupture':'Ok'; }
+  updateStats(); saveData();
+  showToast(delta>0?`+1 stock — ${p.nom}`:`-1 stock — ${p.nom}`);
+}
+
+function changeSold(idx,delta){
+  const p=products[idx];
+  const newSold=Math.max(0,(p.sold||0)+delta);
+  if(newSold===(p.sold||0)) return;
+  if(delta>0&&p.qty<=0){ showToast(`⚠️ Stock épuisé — ${p.nom}`); return; }
+  p.sold=newSold;
+  const newQty=delta>0?Math.max(0,p.qty-1):p.qty+1;
+  p.qty=newQty;
+  const qEl=document.getElementById('qty-'+idx);
+  const bEl=document.getElementById('badge-'+idx);
+  if(qEl) qEl.textContent=newQty;
+  if(bEl){ bEl.className='badge '+(newQty===0?'badge-crit':'badge-ok'); bEl.textContent=newQty===0?'Rupture':'Ok'; }
+  const now=new Date(); const mk=monthKey(now);
+  if(delta>0){
+    salesHistory.push({month:mk,ref:p.ref,nom:p.nom,qty:1,amount:p.prix,date:now.toISOString()});
+    history.unshift({date:now.toLocaleDateString('fr-FR')+' '+now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),ref:p.ref,nom:p.nom,type:'out',qty:1,after:newQty});
+  } else {
+    for(let i=salesHistory.length-1;i>=0;i--){ if(salesHistory[i].ref===p.ref&&salesHistory[i].month===mk){ salesHistory.splice(i,1); break; } }
+    history.unshift({date:now.toLocaleDateString('fr-FR')+' '+now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),ref:p.ref,nom:p.nom,type:'in',qty:1,after:newQty});
+  }
+  const sEl=document.getElementById('sold-'+idx);
+  const cEl=document.getElementById('ca-'+idx);
+  if(sEl) sEl.textContent=newSold;
+  if(cEl) cEl.textContent=(newSold*p.prix).toFixed(2)+' €';
+  updateStats(); saveData();
+  showToast(delta>0?`Vente enregistrée — ${p.nom}`:`Vente annulée, stock restauré — ${p.nom}`);
+}
+
+// ═══════════════════════════════════════════════════════════
+// ONGLET STATS
+// ═══════════════════════════════════════════════════════════
+function renderStats(){
+  const el=document.getElementById('statsContent');
+  const byMonth={};
+
+  // 1. Ventes enregistrées via salesHistory (bouton +)
+  salesHistory.forEach(s=>{
+    if(!byMonth[s.month]) byMonth[s.month]={qty:0,amount:0,prods:{},manual:0};
+    byMonth[s.month].qty+=s.qty; byMonth[s.month].amount+=s.amount;
+    if(!byMonth[s.month].prods[s.ref]) byMonth[s.month].prods[s.ref]={nom:s.nom,qty:0,amount:0};
+    byMonth[s.month].prods[s.ref].qty+=s.qty; byMonth[s.month].prods[s.ref].amount+=s.amount;
+  });
+
+  // 2. Ventes issues de sold sur les produits mais absentes de salesHistory
+  // (saisie manuelle, import JSON, etc.)
+  const soldInHistory = {};
+  salesHistory.forEach(s=>{
+    if(!soldInHistory[s.ref]) soldInHistory[s.ref]=0;
+    soldInHistory[s.ref]+=s.qty;
+  });
+  const now = new Date();
+  const curKey = monthKey(now);
+  products.forEach(p=>{
+    const soldTracked = soldInHistory[p.ref]||0;
+    const soldTotal   = p.sold||0;
+    const manquant    = soldTotal - soldTracked;
+    if(manquant > 0 && p.prix > 0){
+      // Rattacher les ventes manquantes au mois courant
+      if(!byMonth[curKey]) byMonth[curKey]={qty:0,amount:0,prods:{},manual:0};
+      byMonth[curKey].qty    += manquant;
+      byMonth[curKey].amount += manquant * p.prix;
+      if(!byMonth[curKey].prods[p.ref]) byMonth[curKey].prods[p.ref]={nom:p.nom,qty:0,amount:0};
+      byMonth[curKey].prods[p.ref].qty    += manquant;
+      byMonth[curKey].prods[p.ref].amount += manquant * p.prix;
+    }
+  });
+
+  // 3. CA forfaitaires
+  Object.keys(manualCA).forEach(m=>{
+    if(!byMonth[m]) byMonth[m]={qty:0,amount:0,prods:{},manual:0};
+    byMonth[m].manual=manualCA[m]; byMonth[m].amount+=manualCA[m];
+  });
+
+  const months=Object.keys(byMonth).sort().reverse();
+  const btnAjout=`<div style="padding:0 0 12px"><button onclick="openManualCA()" style="width:100%;padding:13px;border-radius:var(--radius-sm);border:1.5px dashed var(--border);background:transparent;color:var(--text2);font-size:14px;font-family:'DM Sans',sans-serif;cursor:pointer">+ Ajouter un CA forfaitaire</button></div>`;
+  if(!months.length){ el.innerHTML=btnAjout+`<div class="empty"><div class="empty-icon">📊</div>Aucune vente enregistrée.</div>`; return; }
+  const maxCA=Math.max(...months.map(m=>byMonth[m].amount));
+  el.innerHTML=btnAjout+months.map(m=>{
+    const d=byMonth[m]; const barW=maxCA>0?Math.round(d.amount/maxCA*100):0;
+    const top=Object.values(d.prods).sort((a,b)=>b.amount-a.amount).slice(0,5);
+    const star=top.length?top[0]:null;
+    const starLine=star?`<div style="display:flex;align-items:center;gap:6px;padding:6px 0 2px;font-size:12px;color:var(--amber-dark);font-weight:500">🏆 ${star.nom} — ${star.qty} vente${star.qty>1?'s':''} (${star.amount.toFixed(2)} €)</div>`:'';
+    const manuelLine=d.manual>0?`<div class="month-prod"><span class="month-prod-nom" style="font-style:italic">Ventes forfaitaires</span><span class="month-prod-val">${d.manual.toFixed(2)} € <span onclick="deleteManualCA('${m}')" style="margin-left:6px;color:var(--red);cursor:pointer;font-size:12px">✕</span></span></div>`:'';
+    return `<div class="month-card">
+      <div class="month-header"><span class="month-title">${fmtMonth(m)}</span><span class="month-ca">${d.amount.toFixed(2)} €</span></div>
+      <div class="month-bar-bg"><div class="month-bar" style="width:${barW}%"></div></div>
+      <div class="month-sub">${d.qty} article${d.qty>1?'s':''} vendu${d.qty>1?'s':''}</div>
+      ${starLine}
+      ${top.map(p=>`<div class="month-prod"><span class="month-prod-nom">${p.nom}</span><span class="month-prod-val">${p.qty} × ${(p.amount/p.qty).toFixed(0)} € = ${p.amount.toFixed(2)} €</span></div>`).join('')}
+      ${manuelLine}
+    </div>`;
+  }).join('');
+}
+
+function openManualCA(){ const now=new Date(); document.getElementById('mca-month').value=monthKey(now); document.getElementById('mca-amount').value=manualCA[monthKey(now)]||''; document.getElementById('manualCAModal').classList.add('open'); }
+function saveManualCA(){ const m=document.getElementById('mca-month').value; const amt=parseFloat(document.getElementById('mca-amount').value); if(!m||isNaN(amt)||amt<=0){ showToast('⚠️ Montant invalide'); return; } manualCA[m]=amt; saveData(); document.getElementById('manualCAModal').classList.remove('open'); renderStats(); updateStats(); showToast(`CA forfaitaire ${fmtMonth(m)} enregistré`); }
+function deleteManualCA(m){ if(!confirm(`Supprimer le CA forfaitaire de ${fmtMonth(m)} ?`)) return; delete manualCA[m]; saveData(); renderStats(); updateStats(); showToast('CA forfaitaire supprimé'); }
+
+// ═══════════════════════════════════════════════════════════
+// ONGLET RÉSULTAT
+// ═══════════════════════════════════════════════════════════
+function renderResult(){
+  const el=document.getElementById('resultContent');
+  const byMonth={};
+
+  // Ventes via salesHistory
+  salesHistory.forEach(s=>{ if(!byMonth[s.month]) byMonth[s.month]=0; byMonth[s.month]+=s.amount; });
+
+  // Ventes dans sold mais absentes de salesHistory → rattacher au mois courant
+  const soldInHistory={};
+  salesHistory.forEach(s=>{ if(!soldInHistory[s.ref]) soldInHistory[s.ref]=0; soldInHistory[s.ref]+=s.qty; });
+  const curKey=monthKey(new Date());
+  products.forEach(p=>{
+    const manquant=(p.sold||0)-(soldInHistory[p.ref]||0);
+    if(manquant>0&&p.prix>0){
+      if(!byMonth[curKey]) byMonth[curKey]=0;
+      byMonth[curKey]+=manquant*p.prix;
+    }
+  });
+
+  Object.keys(manualCA).forEach(m=>{ if(!byMonth[m]) byMonth[m]=0; byMonth[m]+=manualCA[m]; });
+  const months=Object.keys(byMonth).sort().reverse();
+  if(!months.length){ el.innerHTML=`<div class="empty"><div class="empty-icon">💰</div>Aucune donnée disponible.</div>`; return; }
+  const byYear={};
+  months.forEach(m=>{ const y=m.slice(0,4); if(!byYear[y]) byYear[y]=[]; byYear[y].push(m); });
+  const years=Object.keys(byYear).sort().reverse();
+  el.innerHTML=years.map(year=>{
+    const mY=byYear[year];
+    let cumCA=0,cumComm=0,cumLoyer=0,cumUrssaf=0,cumNet=0;
+    mY.forEach(m=>{ const r=calcResult(byMonth[m],m); cumCA+=r.ca;cumComm+=r.commission;cumLoyer+=r.loyer;cumUrssaf+=r.urssaf;cumNet+=r.net; });
+    [cumCA,cumComm,cumLoyer,cumUrssaf,cumNet]=[cumCA,cumComm,cumLoyer,cumUrssaf,cumNet].map(v=>parseFloat(v.toFixed(2)));
+    const cumClass=cumNet>=0?'pos':'neg';
+    const annualCard=`<div class="result-card" style="border:2px solid var(--amber);background:var(--amber-pale);margin-bottom:14px">
+      <div class="result-header"><span class="result-month" style="font-size:19px">📅 Cumul ${year}</span><span class="result-net ${cumClass}" style="font-size:20px">${cumNet.toFixed(2)} €</span></div>
+      <div class="result-row"><span class="result-row-lbl">CA total ${year}</span><span class="result-row-val">${cumCA.toFixed(2)} €</span></div>
+      <div class="result-row"><span class="result-row-lbl">− Commissions 20%</span><span class="result-row-val minus">− ${cumComm.toFixed(2)} €</span></div>
+      <div class="result-row"><span class="result-row-lbl">− Loyers</span><span class="result-row-val minus">− ${cumLoyer.toFixed(2)} €</span></div>
+      <div class="result-row"><span class="result-row-lbl">− URSSAF 12,3%</span><span class="result-row-val urssaf">− ${cumUrssaf.toFixed(2)} €</span></div>
+      <div class="result-row total-line" style="background:rgba(200,134,10,0.12)"><span class="result-row-lbl" style="font-weight:600">💶 Reste net annuel</span><span class="result-net ${cumClass}" style="font-size:18px;font-weight:600">${cumNet.toFixed(2)} €</span></div>
+    </div>`;
+    const monthCards=mY.map(m=>{
+      const r=calcResult(byMonth[m],m); const nc=r.net>=0?'pos':'neg';
+      const b=BOUTIQUES[currentBoutique];
+      let loyerNote='';
+      if(b.ouverture && b.loyerPremierMois !== null && b.loyerPremierMois !== undefined){
+        const ouv=new Date(b.ouverture);
+        const ouvKey=ouv.getFullYear()+'-'+String(ouv.getMonth()+1).padStart(2,'0');
+        if(m===ouvKey) loyerNote=' (1er mois)';
+      }
+      return `<div class="result-card">
+        <div class="result-header"><span class="result-month">${fmtMonth(m)}</span><span class="result-net ${nc}">${r.net.toFixed(2)} €</span></div>
+        <div class="result-row"><span class="result-row-lbl">CA du mois</span><span class="result-row-val">${r.ca.toFixed(2)} €</span></div>
+        <div class="result-row"><span class="result-row-lbl">− Commission ${(BOUTIQUES[currentBoutique].commission*100).toFixed(0)}%</span><span class="result-row-val minus">− ${r.commission.toFixed(2)} €</span></div>
+        <div class="result-row" style="background:rgba(200,134,10,0.07)"><span class="result-row-lbl" style="font-weight:500">💳 Virement</span><span class="result-row-val" style="color:var(--amber-dark);font-weight:600">${r.virementLBDA.toFixed(2)} €</span></div>
+        <div class="result-row"><span class="result-row-lbl">− Loyer${loyerNote}</span><span class="result-row-val minus">− ${r.loyer.toFixed(2)} €</span></div>
+        <div class="result-info">Base avant URSSAF : ${r.caApres.toFixed(2)} €</div>
+        <div class="result-row"><span class="result-row-lbl">− URSSAF 12,3%</span><span class="result-row-val urssaf">− ${r.urssaf.toFixed(2)} €</span></div>
+        <div class="result-row total-line"><span class="result-row-lbl">💶 Reste net</span><span class="result-net ${nc}" style="font-size:16px">${r.net.toFixed(2)} €</span></div>
+      </div>`;
+    }).join('');
+    return annualCard+monthCards;
+  }).join('<div style="height:8px"></div>');
+}
+
+// ═══════════════════════════════════════════════════════════
+// ONGLET HISTORIQUE
+// ═══════════════════════════════════════════════════════════
+function renderHistory(){
+  const el=document.getElementById('histList');
+  const empty=document.getElementById('histEmpty');
+  if(!history.length){ el.innerHTML=''; empty.style.display=''; return; }
+  empty.style.display='none';
+  el.innerHTML=history.map(h=>`<div class="hist-card">
+    <div class="hist-left"><div class="hist-nom">${h.nom}</div><div class="hist-ref">${h.ref}</div><div class="hist-date">${h.date}</div></div>
+    <div class="hist-right"><div class="hist-delta ${h.type}">${h.type==='in'?'+':'-'}${h.qty}</div><div class="hist-after">→ ${h.after} en stock</div></div>
+  </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+// DASHBOARD GLOBAL
+// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// HISTORIQUE GLOBAL MENSUEL
+// ═══════════════════════════════════════════════════════════
+const GLOBAL_HIST_KEY = 'bougies_paula_global_history';
+
+function loadGlobalHistory(){
+  try { return JSON.parse(localStorage.getItem(GLOBAL_HIST_KEY)||'{}'); } catch(e){ return {}; }
+}
+function saveGlobalHistory(hist){
+  try { localStorage.setItem(GLOBAL_HIST_KEY, JSON.stringify(hist)); } catch(e){}
+}
+
+function autoSnapshotGlobal(curKey){
+  // Calcule et sauvegarde le mois précédent si net > 0 et pas encore snapshottés
+  const now = new Date();
+  const prevKey = monthKey(new Date(now.getFullYear(), now.getMonth()-1, 1));
+  const hist = loadGlobalHistory();
+  // Ne ré-écrase pas une entrée déjà présente (laisser la correction manuelle primer)
+  if(hist[prevKey]) return;
+
+  let ca=0, comm=0, virement=0, loyer=0, urssaf=0, net=0;
+  BOUTIQUES.forEach(b=>{
+    try {
+      const raw = localStorage.getItem(b.storageKey);
+      if(!raw) return;
+      const data = JSON.parse(raw);
+      const sh = data.salesHistory||[];
+      const mc = data.manualCA||{};
+      let caBout=0;
+      sh.forEach(s=>{ if(s.month===prevKey) caBout+=s.amount; });
+      caBout += mc[prevKey]||0;
+      const r = calcResultForBoutique(caBout, prevKey, b);
+      ca+=r.ca; comm+=r.commission; virement+=r.virementLBDA; loyer+=r.loyer; urssaf+=r.urssaf; net+=r.net;
+    } catch(e){}
+  });
+  if(net > 0){
+    hist[prevKey] = {
+      ca: parseFloat(ca.toFixed(2)),
+      comm: parseFloat(comm.toFixed(2)),
+      virement: parseFloat(virement.toFixed(2)),
+      loyer: parseFloat(loyer.toFixed(2)),
+      urssaf: parseFloat(urssaf.toFixed(2)),
+      net: parseFloat(net.toFixed(2)),
+      auto: true
+    };
+    saveGlobalHistory(hist);
+  }
+}
+
+function openEditGlobalHist(mk){
+  const hist = loadGlobalHistory();
+  const e = hist[mk]||{};
+  document.getElementById('ghist-month-lbl').textContent = fmtMonth(mk);
+  document.getElementById('ghist-mk').value = mk;
+  document.getElementById('ghist-mk-input').value = mk;
+  document.getElementById('ghist-ca').value = e.ca||'';
+  document.getElementById('ghist-comm').value = e.comm||'';
+  document.getElementById('ghist-virement').value = e.virement||'';
+  document.getElementById('ghist-loyer').value = e.loyer||'';
+  document.getElementById('ghist-urssaf').value = e.urssaf||'';
+  document.getElementById('ghist-net').value = e.net||'';
+  document.getElementById('ghistModal').classList.add('open');
+}
+function saveEditGlobalHist(){
+  const mk = document.getElementById('ghist-mk').value;
+  const net = parseFloat(document.getElementById('ghist-net').value);
+  if(!mk || isNaN(net)){ showToast('⚠️ Net invalide'); return; }
+  const hist = loadGlobalHistory();
+  hist[mk] = {
+    ca:       parseFloat(document.getElementById('ghist-ca').value)||0,
+    comm:     parseFloat(document.getElementById('ghist-comm').value)||0,
+    virement: parseFloat(document.getElementById('ghist-virement').value)||0,
+    loyer:    parseFloat(document.getElementById('ghist-loyer').value)||0,
+    urssaf:   parseFloat(document.getElementById('ghist-urssaf').value)||0,
+    net,
+    auto: false
+  };
+  saveGlobalHistory(hist);
+  document.getElementById('ghistModal').classList.remove('open');
+  renderDashboard();
+  showToast(`✓ ${fmtMonth(mk)} enregistré`);
+}
+function deleteGlobalHist(mk){
+  if(!confirm(`Supprimer l'entrée ${fmtMonth(mk)} de l'historique global ?`)) return;
+  const hist = loadGlobalHistory();
+  delete hist[mk];
+  saveGlobalHistory(hist);
+  renderDashboard();
+  showToast('Entrée supprimée');
+}
+
+function renderDashboard(){
+  const el=document.getElementById('dashboardContent');
+  const now=new Date();
+  const curKey=monthKey(now);
+  const prevKey=monthKey(new Date(now.getFullYear(),now.getMonth()-1,1));
+
+  // Snapshot automatique du mois précédent
+  autoSnapshotGlobal(curKey);
+
+  let totalCA=0, totalMois=0, totalStock=0, totalQty=0;
+  let totalComm=0, totalVirement=0, totalLoyer=0, totalUrssaf=0, totalNet=0;
+  let totalPrevCA=0, totalPrevComm=0, totalPrevVirement=0, totalPrevLoyer=0, totalPrevUrssaf=0, totalPrevNet=0;
+
+  const lignes=BOUTIQUES.map((b,i)=>{
+    try {
+      const raw=localStorage.getItem(b.storageKey);
+      if(!raw) return {b,caMois:0,caPrev:0,valStock:0,qty:0,rMois:calcResultForBoutique(0,curKey,b),rPrev:calcResultForBoutique(0,prevKey,b)};
+      const data=JSON.parse(raw);
+      const prods=data.stocks||[];
+      const sh=data.salesHistory||[];
+      const mc=data.manualCA||{};
+      let caMois=0,caPrev=0;
+      sh.forEach(s=>{ if(s.month===curKey) caMois+=s.amount; if(s.month===prevKey) caPrev+=s.amount; });
+      caMois+=mc[curKey]||0; caPrev+=mc[prevKey]||0;
+      const valStock=prods.reduce((s,p)=>s+p.qty*p.prix,0);
+      const qty=prods.reduce((s,p)=>s+p.qty,0);
+      const rMois=calcResultForBoutique(caMois,curKey,b);
+      const rPrev=calcResultForBoutique(caPrev,prevKey,b);
+      totalMois+=caMois; totalStock+=valStock; totalQty+=qty;
+      totalComm+=rMois.commission; totalVirement+=rMois.virementLBDA; totalLoyer+=rMois.loyer; totalUrssaf+=rMois.urssaf; totalNet+=rMois.net;
+      totalPrevCA+=caPrev; totalPrevComm+=rPrev.commission; totalPrevVirement+=rPrev.virementLBDA; totalPrevLoyer+=rPrev.loyer; totalPrevUrssaf+=rPrev.urssaf; totalPrevNet+=rPrev.net;
+      return {b,caMois,caPrev,valStock,qty,rMois,rPrev};
+    } catch(e){ return {b,caMois:0,caPrev:0,valStock:0,qty:0,rMois:calcResultForBoutique(0,curKey,b),rPrev:calcResultForBoutique(0,prevKey,b)}; }
+  });
+
+  const netClass=totalNet>=0?'ok':'';
+  const prevNetClass=totalPrevNet>=0?'ok':'';
+
+  el.innerHTML=`
+    <div class="dash-card" style="border:2px solid var(--amber);background:var(--amber-pale);margin-bottom:14px">
+      <div class="dash-title">📊 Vue globale — ${fmtMonth(curKey)}</div>
+      <div class="dash-row"><span class="dash-lbl">CA total ce mois</span><span class="dash-val ok">${totalMois.toFixed(2)} €</span></div>
+      <div class="dash-row"><span class="dash-lbl">− Commissions (total)</span><span class="dash-val" style="color:var(--red)">− ${totalComm.toFixed(2)} €</span></div>
+      <div class="dash-row" style="background:rgba(200,134,10,0.07)"><span class="dash-lbl" style="font-weight:500">💳 Virements attendus</span><span class="dash-val" style="color:var(--amber-dark);font-weight:600">${totalVirement.toFixed(2)} €</span></div>
+      <div class="dash-row"><span class="dash-lbl">− Loyers (total)</span><span class="dash-val" style="color:var(--red)">− ${totalLoyer.toFixed(2)} €</span></div>
+      <div class="dash-row"><span class="dash-lbl">− URSSAF 12,3% (total)</span><span class="dash-val" style="color:var(--orange)">− ${totalUrssaf.toFixed(2)} €</span></div>
+      <div class="dash-row" style="border-top:1.5px solid var(--amber);margin-top:4px;padding-top:8px"><span class="dash-lbl" style="font-weight:600">💶 Reste net ce mois</span><span class="dash-val ${netClass}" style="font-size:17px;font-weight:700">${totalNet.toFixed(2)} €</span></div>
+      <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
+        <div style="font-size:11px;color:var(--text3);font-weight:500;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px">${fmtMonth(prevKey)}</div>
+        <div class="dash-row"><span class="dash-lbl">CA mois préc.</span><span class="dash-val">${totalPrevCA.toFixed(2)} €</span></div>
+        <div class="dash-row"><span class="dash-lbl">Net mois préc.</span><span class="dash-val ${prevNetClass}">${totalPrevNet.toFixed(2)} €</span></div>
+      </div>
+      <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
+        <div class="dash-row"><span class="dash-lbl">Valeur stock globale</span><span class="dash-val">${totalStock.toFixed(2)} €</span></div>
+        <div class="dash-row"><span class="dash-lbl">Articles en stock</span><span class="dash-val">${totalQty}</span></div>
+      </div>
+    </div>
+    ${lignes.map(l=>{
+      const r=l.rMois; const rp=l.rPrev;
+      const nc=r.net>=0?'ok':''; const ncp=rp.net>=0?'ok':'';
+      let loyerNote='';
+      if(l.b.ouverture && l.b.loyerPremierMois !== null && l.b.loyerPremierMois !== undefined){
+        const ouv=new Date(l.b.ouverture);
+        const ouvKey=ouv.getFullYear()+'-'+String(ouv.getMonth()+1).padStart(2,'0');
+        if(curKey===ouvKey) loyerNote=' (1er mois)';
+      }
+      return `
+    <div class="dash-card">
+      <div class="dash-title">${l.b.emoji} ${l.b.nom} — <span style="font-size:13px;font-family:'DM Sans',sans-serif;font-weight:400;color:var(--text3)">${fmtMonth(curKey)}</span></div>
+      <div class="dash-row"><span class="dash-lbl">CA du mois</span><span class="dash-val ok">${r.ca.toFixed(2)} €</span></div>
+      <div class="dash-row"><span class="dash-lbl">− Commission ${(l.b.commission*100).toFixed(0)}%</span><span class="dash-val" style="color:var(--red)">− ${r.commission.toFixed(2)} €</span></div>
+      <div class="dash-row" style="background:rgba(200,134,10,0.07)"><span class="dash-lbl" style="font-weight:500">💳 Virement</span><span class="dash-val" style="color:var(--amber-dark);font-weight:600">${r.virementLBDA.toFixed(2)} €</span></div>
+      <div class="dash-row"><span class="dash-lbl">− Loyer${loyerNote}</span><span class="dash-val" style="color:var(--red)">− ${r.loyer.toFixed(2)} €</span></div>
+      <div class="dash-row"><span class="dash-lbl" style="font-size:11px;color:var(--text3)">Base avant URSSAF</span><span class="dash-val" style="font-size:12px;color:var(--text3)">${r.caApres.toFixed(2)} €</span></div>
+      <div class="dash-row"><span class="dash-lbl">− URSSAF 12,3%</span><span class="dash-val" style="color:var(--orange)">− ${r.urssaf.toFixed(2)} €</span></div>
+      <div class="dash-row" style="border-top:1.5px solid var(--border);margin-top:2px;padding-top:6px"><span class="dash-lbl" style="font-weight:600">💶 Reste net</span><span class="dash-val ${nc}" style="font-size:15px;font-weight:600">${r.net.toFixed(2)} €</span></div>
+      <div style="margin-top:8px;padding-top:6px;border-top:1px dashed var(--border);font-size:12px;color:var(--text3)">
+        ${fmtMonth(prevKey)} — CA : ${l.caPrev.toFixed(2)} € / Net : <span style="color:${rp.net>=0?'var(--green)':'var(--red)'}">${rp.net.toFixed(2)} €</span>
+      </div>
+      <div style="margin-top:6px;padding-top:6px;border-top:1px dashed var(--border);font-size:12px;color:var(--text3)">
+        Stock : ${l.valStock.toFixed(2)} € · ${l.qty} article${l.qty>1?'s':''}
+      </div>
+    </div>`;
+    }).join('')}
+    ${renderGlobalHistSection(curKey)}`;
+}
+
+function renderGlobalHistSection(curKey){
+  const hist = loadGlobalHistory();
+  const keys = Object.keys(hist).filter(k => k !== curKey).sort().reverse();
+
+  const addBtn = `<div style="padding:0 0 10px">
+    <button onclick="openEditGlobalHist('${curKey}')" style="width:100%;padding:12px;border-radius:var(--radius-sm);border:1.5px dashed var(--border);background:transparent;color:var(--text2);font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer">
+      + Saisir / corriger un mois manuellement
+    </button>
+  </div>`;
+
+  if(!keys.length) return `
+    <div class="dash-card" style="margin-top:6px">
+      <div class="dash-title" style="margin-bottom:10px">📅 Historique mensuel global</div>
+      ${addBtn}
+      <div class="empty" style="padding:1rem 0"><div class="empty-icon" style="font-size:28px">📭</div>Aucun mois clôturé pour l'instant</div>
+    </div>`;
+
+  // Cumul annuel
+  const byYear = {};
+  keys.forEach(k=>{ const y=k.slice(0,4); if(!byYear[y]) byYear[y]={ca:0,comm:0,virement:0,loyer:0,urssaf:0,net:0,months:[]}; const e=hist[k]; byYear[y].ca+=e.ca; byYear[y].comm+=e.comm; byYear[y].virement+=e.virement; byYear[y].loyer+=e.loyer; byYear[y].urssaf+=e.urssaf; byYear[y].net+=e.net; byYear[y].months.push(k); });
+  const years = Object.keys(byYear).sort().reverse();
+
+  const rows = years.map(y=>{
+    const tot = byYear[y];
+    const mRows = byYear[y].months.map(k=>{
+      const e = hist[k];
+      const nc = e.net>=0 ? 'var(--green)' : 'var(--red)';
+      const tag = e.auto ? '' : `<span style="font-size:9px;background:var(--amber-pale);color:var(--amber-dark);border-radius:10px;padding:1px 5px;margin-left:4px">✏️ modifié</span>`;
+      return `<div style="display:flex;align-items:center;padding:7px 0;border-top:1px solid var(--border);gap:6px;flex-wrap:wrap">
+        <span style="flex:1;font-size:13px;font-weight:500;color:var(--text)">${fmtMonth(k)}${tag}</span>
+        <span style="font-size:12px;color:var(--text3)">CA ${e.ca.toFixed(2)} €</span>
+        <span style="font-size:12px;color:var(--red)">−${e.comm.toFixed(2)}</span>
+        <span style="font-size:12px;color:var(--red)">−${e.loyer.toFixed(2)}</span>
+        <span style="font-size:12px;color:var(--orange)">−${e.urssaf.toFixed(2)}</span>
+        <span style="font-size:14px;font-weight:600;color:${nc};min-width:64px;text-align:right">${e.net.toFixed(2)} €</span>
+        <button onclick="openEditGlobalHist('${k}')" style="background:none;border:none;cursor:pointer;font-size:15px;padding:0 2px" title="Corriger">✏️</button>
+        <button onclick="deleteGlobalHist('${k}')" style="background:none;border:none;cursor:pointer;font-size:15px;padding:0 2px" title="Supprimer">🗑️</button>
+      </div>`;
+    }).join('');
+    const ync = tot.net>=0 ? 'var(--green)' : 'var(--red)';
+    return `<div style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;border-bottom:2px solid var(--amber)">
+        <span style="font-family:'DM Serif Display',serif;font-size:15px;color:var(--text)">📅 ${y}</span>
+        <span style="font-size:13px;color:var(--text3)">CA ${tot.ca.toFixed(2)} € → <span style="font-weight:700;color:${ync}">${tot.net.toFixed(2)} € net</span></span>
+      </div>
+      <div style="font-size:10px;color:var(--text3);padding:4px 0 2px;display:flex;gap:8px">
+        <span>Commission</span><span>Loyer</span><span>URSSAF</span><span style="margin-left:auto">Net</span>
+      </div>
+      ${mRows}
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="dash-card" style="margin-top:6px">
+      <div class="dash-title" style="margin-bottom:10px">📅 Historique mensuel global</div>
+      ${addBtn}
+      ${rows}
+    </div>`;
+}
+
+function calcResultForBoutique(ca,mk,b){
+  let loyer = b.loyer;
+  if(b.ouverture && b.loyerPremierMois !== null && b.loyerPremierMois !== undefined){
+    const ouv = new Date(b.ouverture);
+    const ouvKey = ouv.getFullYear()+'-'+String(ouv.getMonth()+1).padStart(2,'0');
+    if(mk === ouvKey) loyer = b.loyerPremierMois;
+  }
+  const commission   = parseFloat((ca * b.commission).toFixed(2));
+  const virementLBDA = parseFloat((ca - commission).toFixed(2));
+  const urssaf       = parseFloat((ca * URSSAF_RATE).toFixed(2));
+  const caApres      = parseFloat((ca - commission - loyer).toFixed(2));
+  const net          = parseFloat((caApres - urssaf).toFixed(2));
+  return {ca, commission, virementLBDA, loyer, urssaf, caApres, net};
+}
+
+function calcResult(ca,mk){
+  return calcResultForBoutique(ca, mk, BOUTIQUES[currentBoutique]);
+}
+
+// ═══════════════════════════════════════════════════════════
+// MODAL PRODUIT
+// ═══════════════════════════════════════════════════════════
+function openAdd(){ editIdx=null; document.getElementById('modalTitle').textContent='Ajouter un produit'; ['ref','nom','prix','qty'].forEach(f=>document.getElementById('f-'+f).value=''); document.getElementById('editModal').classList.add('open'); }
+function openEdit(i){ editIdx=i; const p=products[i]; document.getElementById('modalTitle').textContent='Modifier'; document.getElementById('f-ref').value=p.ref; document.getElementById('f-nom').value=p.nom; document.getElementById('f-prix').value=p.prix; document.getElementById('f-qty').value=p.qty; document.getElementById('editModal').classList.add('open'); }
+function closeModal(){ document.getElementById('editModal').classList.remove('open'); }
+function saveProduct(){
+  const ref=document.getElementById('f-ref').value.trim();
+  const nom=document.getElementById('f-nom').value.trim();
+  const prix=parseFloat(document.getElementById('f-prix').value)||0;
+  const qty=parseInt(document.getElementById('f-qty').value)||0;
+  if(!ref&&!nom){ alert('Référence ou nom requis.'); return; }
+  if(editIdx!==null) products[editIdx]={...products[editIdx],ref,nom,prix,qty};
+  else{ products.push({ref,nom,prix,qty,sold:0}); sortProds(products); }
+  closeModal(); saveData(); renderList(); updateStats();
+  showToast(editIdx!==null?'Produit modifié':'Produit ajouté');
+}
+
+// ═══════════════════════════════════════════════════════════
+// IMPORT CATALOGUE EXCEL
+// ═══════════════════════════════════════════════════════════
+function importExcel(event){
+  const file=event.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try {
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const allRows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      if(!allRows.length){ showToast('⚠️ Fichier vide'); return; }
+      let headerIdx=0;
+      for(let i=0;i<Math.min(5,allRows.length);i++){
+        const rowStr=allRows[i].join('|').toLowerCase();
+        if(rowStr.includes('code')||rowStr.includes('nom article')||rowStr.includes('référence')||rowStr.includes('libellé')){ headerIdx=i; break; }
+      }
+      const headers=allRows[headerIdx].map(h=>String(h).toLowerCase().trim());
+      const findCol=(keys)=>{ for(const k of keys){ const idx=headers.findIndex(h=>h.includes(k.toLowerCase())); if(idx>=0) return idx; } return -1; };
+      const iRef=findCol(['code article','code art','code','ref','sku','id']);
+      const iNom=findCol(['nom article','libellé article','libelle article','nom','libellé','libelle','désignation','designation','produit']);
+      const iPrix=findCol(['prix de base','prix unitaire','prix base','prix','price','tarif','pu']);
+      if(iRef<0&&iNom<0){ showToast(`⚠️ Colonnes reconnues: ${headers.slice(0,4).join(', ')}…`); return; }
+      let added=0,updated=0;
+      for(let i=headerIdx+1;i<allRows.length;i++){
+        const row=allRows[i];
+        const ref=iRef>=0?String(row[iRef]||'').trim():'';
+        const nom=iNom>=0?String(row[iNom]||'').trim():'';
+        let prix=0;
+        if(iPrix>=0&&row[iPrix]!==''){
+          const pv=row[iPrix];
+          prix=typeof pv==='number'?pv:parseFloat(String(pv).replace(/[€\s]/g,'').replace(',','.'))||0;
+        }
+        if(!ref&&!nom) continue;
+        const existing=products.find(p=>p.ref===ref);
+        if(existing){ if(nom) existing.nom=nom; if(prix>0) existing.prix=prix; updated++; }
+        else{ products.push({ref,nom,prix,qty:0,sold:0}); added++; }
+      }
+      sortProds(products); saveData(); renderList(); updateStats();
+      event.target.value='';
+      showToast(`✓ ${added} ajouté${added>1?'s':''}, ${updated} mis à jour`);
+    } catch(err){ showToast('⚠️ Erreur: '+err.message); console.error(err); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ═══════════════════════════════════════════════════════════
+// EXPORT EXCEL
+// ═══════════════════════════════════════════════════════════
+function exportXLSX(){
+  const b=BOUTIQUES[currentBoutique];
+  const wb=XLSX.utils.book_new();
+  const dataStocks=[['Code Article','Nom','Prix','Stock','Valeur stock','Qté vendue','CA vendu'],
+    ...products.map(p=>[p.ref,p.nom,p.prix,p.qty,parseFloat((p.qty*p.prix).toFixed(2)),p.sold||0,parseFloat(((p.sold||0)*p.prix).toFixed(2))])];
+  const ws1=XLSX.utils.aoa_to_sheet(dataStocks);
+  ws1['!cols']=[{wch:16},{wch:28},{wch:8},{wch:8},{wch:13},{wch:12},{wch:12}];
+  XLSX.utils.book_append_sheet(wb,ws1,'Stocks');
+  const byMonth={};
+  salesHistory.forEach(s=>{ if(!byMonth[s.month]) byMonth[s.month]={produits:0,forfait:0,prods:{}}; byMonth[s.month].produits+=s.amount; if(!byMonth[s.month].prods[s.ref]) byMonth[s.month].prods[s.ref]={nom:s.nom,qty:0,amount:0}; byMonth[s.month].prods[s.ref].qty+=s.qty; byMonth[s.month].prods[s.ref].amount+=s.amount; });
+  Object.keys(manualCA).forEach(m=>{ if(!byMonth[m]) byMonth[m]={produits:0,forfait:0,prods:{}}; byMonth[m].forfait=manualCA[m]; });
+  const ms=Object.keys(byMonth).sort();
+  const dataCA=[['Mois','CA produits','CA forfaitaire','CA total','Produit star','Qté star'],
+    ...ms.map(m=>{ const d=byMonth[m]; const total=parseFloat((d.produits+(d.forfait||0)).toFixed(2)); const top=Object.values(d.prods).sort((a,b2)=>b2.qty-a.qty)[0]; return [fmtMonth(m),parseFloat(d.produits.toFixed(2)),parseFloat((d.forfait||0).toFixed(2)),total,top?top.nom:'',top?top.qty:'']; }),
+    ['TOTAL',parseFloat(ms.reduce((s,m)=>s+byMonth[m].produits,0).toFixed(2)),parseFloat(ms.reduce((s,m)=>s+(byMonth[m].forfait||0),0).toFixed(2)),parseFloat(ms.reduce((s,m)=>s+byMonth[m].produits+(byMonth[m].forfait||0),0).toFixed(2)),'','']];
+  const ws2=XLSX.utils.aoa_to_sheet(dataCA); ws2['!cols']=[{wch:12},{wch:14},{wch:16},{wch:12},{wch:28},{wch:10}];
+  XLSX.utils.book_append_sheet(wb,ws2,'CA par mois');
+  const dataResult=[['Mois','CA','Commission 20%','Loyer','Base avant URSSAF','URSSAF 12.3%','Reste net'],
+    ...ms.map(m=>{ const ca=parseFloat(((byMonth[m].produits||0)+(byMonth[m].forfait||0)).toFixed(2)); const r=calcResult(ca,m); return [fmtMonth(m),r.ca,r.commission,r.loyer,r.caApres,r.urssaf,r.net]; })];
+  const years=[...new Set(ms.map(m=>m.slice(0,4)))];
+  years.forEach(y=>{ const mY=ms.filter(m=>m.startsWith(y)); let tCA=0,tC=0,tL=0,tB=0,tU=0,tN=0; mY.forEach(m=>{ const ca=parseFloat(((byMonth[m].produits||0)+(byMonth[m].forfait||0)).toFixed(2)); const r=calcResult(ca,m); tCA+=r.ca;tC+=r.commission;tL+=r.loyer;tB+=r.caApres;tU+=r.urssaf;tN+=r.net; }); dataResult.push(['TOTAL '+y,...[tCA,tC,tL,tB,tU,tN].map(v=>parseFloat(v.toFixed(2)))]); });
+  const ws3=XLSX.utils.aoa_to_sheet(dataResult); ws3['!cols']=[{wch:12},{wch:10},{wch:15},{wch:8},{wch:18},{wch:13},{wch:12}];
+  XLSX.utils.book_append_sheet(wb,ws3,'Résultats nets');
+  XLSX.writeFile(wb,`${b.id}_bougies_${new Date().toISOString().slice(0,10)}.xlsx`);
+  showToast('Export Excel téléchargé');
+}
+
+// ═══════════════════════════════════════════════════════════
+// SAUVEGARDE / RESTAURATION JSON
+// ═══════════════════════════════════════════════════════════
+function exportDonnees(){
+  const isGlobal = currentBoutique >= BOUTIQUES.length;
+  if(isGlobal){
+    const allData={'__config__': BOUTIQUES, '__global_history__': loadGlobalHistory()};
+    BOUTIQUES.forEach(b=>{ try{ const r=localStorage.getItem(b.storageKey); allData[b.id]=r?JSON.parse(r):{}; }catch(e){allData[b.id]={};} });
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([JSON.stringify(allData,null,2)],{type:'application/json'}));
+    a.download='sauvegarde_toutes_boutiques_'+new Date().toISOString().slice(0,10)+'.json';
+    a.click(); showToast('💾 Sauvegarde globale téléchargée'); return;
+  }
+  const b=BOUTIQUES[currentBoutique];
+  const data={version:1,date:new Date().toISOString(),stocks:products.map(p=>({ref:p.ref,nom:p.nom,prix:p.prix,qty:p.qty,sold:p.sold||0})),history:history.slice(0,300),salesHistory:salesHistory.slice(0,3000),manualCA};
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+  a.download=`sauvegarde_${b.id}_${new Date().toISOString().slice(0,10)}.json`;
+  a.click(); showToast('💾 Sauvegarde téléchargée');
+}
+
+function importDonnees(event){
+  const file=event.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try {
+      const data=JSON.parse(e.target.result);
+      // Sauvegarde globale avec config ?
+      if(data['__config__']){
+        BOUTIQUES.length=0; data['__config__'].forEach(b=>BOUTIQUES.push(b)); saveBoutiquesConfig();
+        BOUTIQUES.forEach(b=>{ if(data[b.id]) localStorage.setItem(b.storageKey,JSON.stringify(data[b.id])); });
+        if(data['__global_history__']) saveGlobalHistory(data['__global_history__']);
+        renderBoutiqueBar(); switchBoutique(0);
+        event.target.value=''; showToast('✅ Toutes les boutiques restaurées !'); return;
+      }
+      // Sauvegarde simple d'une boutique
+      if(!data.stocks){ showToast('⚠️ Fichier invalide'); return; }
+      products=data.stocks.map(p=>({ref:p.ref,nom:p.nom,prix:p.prix,qty:p.qty||0,sold:p.sold||0}));
+      sortProds(products);
+      history=data.history||[]; salesHistory=data.salesHistory||[]; manualCA=data.manualCA||{};
+      saveData(); renderList(); updateStats();
+      event.target.value=''; showToast('✅ Données restaurées !');
+    } catch(err){ showToast('⚠️ Erreur lecture sauvegarde'); console.error(err); }
+  };
+  reader.readAsText(file);
+}
+
+// ═══════════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════════
+function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
+
+document.getElementById('editModal').addEventListener('click',e=>{ if(e.target===document.getElementById('editModal')) closeModal(); });
+document.getElementById('manualCAModal').addEventListener('click',e=>{ if(e.target===document.getElementById('manualCAModal')) document.getElementById('manualCAModal').classList.remove('open'); });
+
+// ═══════════════════════════════════════════════════════════
+// PARAMÈTRES BOUTIQUE
+// ═══════════════════════════════════════════════════════════
+function openParamsBoutique(){
+  const b = BOUTIQUES[currentBoutique];
+  if(!b) return;
+  document.getElementById('params-title').textContent = 'Paramètres — ' + b.nom;
+  document.getElementById('p-nom').value            = b.nom;
+  document.getElementById('p-emoji').value          = b.emoji;
+  document.getElementById('p-commission').value     = (b.commission * 100).toFixed(1);
+  document.getElementById('p-loyer').value          = b.loyer;
+  document.getElementById('p-ouverture').value      = b.ouverture || '';
+  document.getElementById('p-loyer-premier').value  = b.loyerPremierMois !== null && b.loyerPremierMois !== undefined ? b.loyerPremierMois : '';
+  document.getElementById('paramsBoutiqueModal').classList.add('open');
+}
+
+function saveParamsBoutique(){
+  const b = BOUTIQUES[currentBoutique];
+  if(!b) return;
+  const nom          = document.getElementById('p-nom').value.trim();
+  const emoji        = document.getElementById('p-emoji').value.trim() || b.emoji;
+  const commission   = parseFloat(document.getElementById('p-commission').value) || b.commission*100;
+  const loyer        = parseFloat(document.getElementById('p-loyer').value) ?? b.loyer;
+  const ouverture    = document.getElementById('p-ouverture').value || null;
+  const lpVal        = document.getElementById('p-loyer-premier').value;
+  const loyerPremierMois = lpVal !== '' ? parseFloat(lpVal) : null;
+  if(!nom){ showToast('⚠️ Nom requis'); return; }
+  b.nom              = nom;
+  b.emoji            = emoji;
+  b.commission       = commission / 100;
+  b.loyer            = loyer;
+  b.ouverture        = ouverture;
+  b.loyerPremierMois = loyerPremierMois;
+  saveBoutiquesConfig();
+  renderBoutiqueBar();
+  document.getElementById('paramsBoutiqueModal').classList.remove('open');
+  renderResult();
+  showToast('✓ Paramètres enregistrés');
+}
+
+document.getElementById('paramsBoutiqueModal').addEventListener('click',e=>{ if(e.target===document.getElementById('paramsBoutiqueModal')) document.getElementById('paramsBoutiqueModal').classList.remove('open'); });
+function openNewBoutique(){
+  ['nb-nom','nb-emoji','nb-commission','nb-loyer'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('nb-emoji').value='🏪';
+  document.getElementById('newBoutiqueModal').classList.add('open');
+}
+
+function saveNewBoutique(){
+  const nom       = document.getElementById('nb-nom').value.trim();
+  const emoji     = document.getElementById('nb-emoji').value.trim() || '🏪';
+  const commission= parseFloat(document.getElementById('nb-commission').value) || 20;
+  const loyer     = parseFloat(document.getElementById('nb-loyer').value) || 0;
+  if(!nom){ showToast('⚠️ Donne un nom à la boutique'); return; }
+  const id        = 'boutique_' + Date.now();
+  const storageKey= 'boutique_data_' + id;
+  BOUTIQUES.push({ id, nom, emoji, storageKey, loyer, loyerAvril: loyer, commission: commission/100 });
+  saveBoutiquesConfig();
+  document.getElementById('newBoutiqueModal').classList.remove('open');
+  renderBoutiqueBar();
+  switchBoutique(BOUTIQUES.length - 1);
+  showToast(`✓ Boutique "${nom}" créée !`);
+}
+
+document.getElementById('newBoutiqueModal').addEventListener('click',e=>{ if(e.target===document.getElementById('newBoutiqueModal')) document.getElementById('newBoutiqueModal').classList.remove('open'); });
+document.getElementById('ghistModal').addEventListener('click',e=>{ if(e.target===document.getElementById('ghistModal')) document.getElementById('ghistModal').classList.remove('open'); });
+
+// ── DÉMARRAGE ─────────────────────────────────────────────
+loadBoutiquesConfig();
+renderBoutiqueBar();
+switchBoutique(0);
+</script>
+</body>
+</html>
