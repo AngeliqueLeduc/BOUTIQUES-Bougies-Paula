@@ -3,11 +3,50 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#1a1208">
+<meta name="theme-color" content="#ffb6c1">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Bougies Paula">
 <title>Bougies Paula — Mes Boutiques</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+// Génère l'icône SVG BP et le manifest dynamiquement
+(function(){
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+    <rect width="512" height="512" rx="110" fill="#ffb6c1"/>
+    <text x="256" y="330" text-anchor="middle" font-family="Georgia,serif" font-size="260" font-weight="700" fill="#ff1493" letter-spacing="-8">BP</text>
+  </svg>`;
+  const svgB64 = btoa(unescape(encodeURIComponent(svg)));
+  const iconUrl = 'data:image/svg+xml;base64,' + svgB64;
+
+  // Apple touch icon
+  const appleLink = document.createElement('link');
+  appleLink.rel = 'apple-touch-icon';
+  appleLink.href = iconUrl;
+  document.head.appendChild(appleLink);
+
+  // Manifest PWA
+  const manifest = {
+    name: 'Bougies Paula',
+    short_name: 'BP',
+    start_url: '.',
+    display: 'standalone',
+    background_color: '#ffb6c1',
+    theme_color: '#ffb6c1',
+    icons: [
+      { src: iconUrl, sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' }
+    ]
+  };
+  const mBlob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
+  const mUrl = URL.createObjectURL(mBlob);
+  const mLink = document.createElement('link');
+  mLink.rel = 'manifest';
+  mLink.href = mUrl;
+  document.head.appendChild(mLink);
+})();
+</script>
 <style>
 :root {
   --amber:#c8860a;--amber-light:#f5c842;--amber-pale:#fdf3dc;--amber-dark:#7a4f00;
