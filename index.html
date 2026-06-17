@@ -559,9 +559,10 @@ function switchBoutique(idx){
     document.querySelectorAll('.pill').forEach((p,i)=>p.classList.toggle('active',i===0));
     switchTab('stock');
     renderList();
-    updateStats();
+    updateStatsBoutique();
   } else {
     renderDashboard();
+    updateStats();
   }
 }
 
