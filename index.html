@@ -1227,8 +1227,17 @@ function exportXLSX(){
 function exportDonnees(){
   const isGlobal = currentBoutique >= BOUTIQUES.length;
   if(isGlobal){
-    const allData={'__config__': BOUTIQUES, '__global_history__': loadGlobalHistory()};
-    BOUTIQUES.forEach(b=>{ try{ const r=localStorage.getItem(b.storageKey); allData[b.id]=r?JSON.parse(r):{}; }catch(e){allData[b.id]={};} });
+    const allData={
+      '__config__': BOUTIQUES,
+      '__global_history__': loadGlobalHistory()
+    };
+    BOUTIQUES.forEach(b=>{ 
+      try{ 
+        const r=localStorage.getItem(b.storageKey); 
+        allData[b.id]=r?JSON.parse(r):{}; 
+      }
+      catch(e){ allData[b.id]={}; }
+    });
     const a=document.createElement('a');
     a.href=URL.createObjectURL(new Blob([JSON.stringify(allData,null,2)],{type:'application/json'}));
     a.download='sauvegarde_toutes_boutiques_'+new Date().toISOString().slice(0,10)+'.json';
