@@ -212,14 +212,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
 <!-- Stats -->
 <div class="stats-row" style="grid-template-columns:repeat(3,1fr)">
-  <div class="stat-card" onclick="document.getElementById('tab-stock').scrollIntoView()"><div class="stat-val ok" id="s-vendu-nb">0</div><div class="stat-lbl">Art. vendus</div></div>
-  <div class="stat-card" onclick="switchBoutique(BOUTIQUES.length)"><div class="stat-val ok" id="s-ca">0€</div><div class="stat-lbl">CA total</div></div>
-  <div class="stat-card" onclick="document.getElementById('tab-stock').scrollIntoView()"><div class="stat-val" id="s-valeur">0€</div><div class="stat-lbl">Valeur stock</div></div>
+  <div class="stat-card"><div class="stat-val ok" id="s-vendu-nb">0</div><div class="stat-lbl">Art. vendus</div></div>
+  <div class="stat-card"><div class="stat-val ok" id="s-ca">0€</div><div class="stat-lbl">CA total</div></div>
+  <div class="stat-card"><div class="stat-val" id="s-valeur">0€</div><div class="stat-lbl">Valeur stock</div></div>
 </div>
 <div class="stats-row" style="grid-template-columns:repeat(3,1fr);padding-top:8px">
-  <div class="stat-card" onclick="switchTab('stats')"><div class="stat-val ok" id="s-ca-mois">0€</div><div class="stat-lbl" id="s-ca-mois-lbl">CA ce mois</div></div>
-  <div class="stat-card" onclick="switchBoutique(BOUTIQUES.length);document.getElementById('dashboardContent').scrollIntoView(false);"><div class="stat-val" id="s-net-mois">0€</div><div class="stat-lbl">💶 Net ce mois</div></div>
-  <div class="stat-card" onclick="document.getElementById('tab-stock').scrollIntoView()"><div class="stat-val" id="s-qty-total">0</div><div class="stat-lbl">En stock</div></div>
+  <div class="stat-card"><div class="stat-val ok" id="s-ca-mois">0€</div><div class="stat-lbl" id="s-ca-mois-lbl">CA ce mois</div></div>
+  <div class="stat-card"><div class="stat-val" id="s-ca-prev">0€</div><div class="stat-lbl" id="s-ca-prev-lbl">CA mois préc.</div></div>
+  <div class="stat-card"><div class="stat-val" id="s-qty-total">0</div><div class="stat-lbl">En stock</div></div>
 </div>
 
 <!-- Tabs boutique (masqués en mode Global) -->
@@ -559,10 +559,9 @@ function switchBoutique(idx){
     document.querySelectorAll('.pill').forEach((p,i)=>p.classList.toggle('active',i===0));
     switchTab('stock');
     renderList();
-    updateStatsBoutique();
+    updateStats();
   } else {
     renderDashboard();
-    updateStats();
   }
 }
 
@@ -1227,17 +1226,8 @@ function exportXLSX(){
 function exportDonnees(){
   const isGlobal = currentBoutique >= BOUTIQUES.length;
   if(isGlobal){
-    const allData={
-      '__config__': BOUTIQUES,
-      '__global_history__': loadGlobalHistory()
-    };
-    BOUTIQUES.forEach(b=>{ 
-      try{ 
-        const r=localStorage.getItem(b.storageKey); 
-        allData[b.id]=r?JSON.parse(r):{}; 
-      }
-      catch(e){ allData[b.id]={}; }
-    });
+    const allData={'__config__': BOUTIQUES, '__global_history__': loadGlobalHistory()};
+    BOUTIQUES.forEach(b=>{ try{ const r=localStorage.getItem(b.storageKey); allData[b.id]=r?JSON.parse(r):{}; }catch(e){allData[b.id]={};} });
     const a=document.createElement('a');
     a.href=URL.createObjectURL(new Blob([JSON.stringify(allData,null,2)],{type:'application/json'}));
     a.download='sauvegarde_toutes_boutiques_'+new Date().toISOString().slice(0,10)+'.json';
