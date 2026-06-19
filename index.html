@@ -569,22 +569,52 @@ function switchBoutique(idx){
 // STATS
 // ═══════════════════════════════════════════════════════════
 function updateStats(){
-  const valStock = products.reduce((s,p)=>s+p.qty*p.prix,0);
-  document.getElementById('s-valeur').textContent = valStock.toFixed(2)+' €';
-  const totalSold = products.reduce((s,p)=>s+(p.sold||0),0);
-  const caProduits = products.reduce((s,p)=>s+(p.sold||0)*p.prix,0);
-  const caForfeits = Object.values(manualCA).reduce((s,v)=>s+v,0);
-  const caTotal = caProduits+caForfeits;
-  document.getElementById('s-vendu-nb').textContent = totalSold;
-  document.getElementById('s-ca').textContent = caTotal.toFixed(2)+' €';
-  const qtyTotal = products.reduce((s,p)=>s+p.qty,0);
-  document.getElementById('s-qty-total').textContent = qtyTotal;
+  // Statistiques globales de toutes les boutiques
+  let totalSold=0;
+  let totalCA=0;
+  let totalStockValue=0;
+  let totalQty=0;
+
   const now=new Date();
   const curKey=monthKey(now);
   const prevKey=monthKey(new Date(now.getFullYear(),now.getMonth()-1,1));
-  let caMois=0,caPrev=0;
-  salesHistory.forEach(s=>{ if(s.month===curKey) caMois+=s.amount; if(s.month===prevKey) caPrev+=s.amount; });
-  caMois+=manualCA[curKey]||0; caPrev+=manualCA[prevKey]||0;
+
+  let caMois=0;
+  let caPrev=0;
+
+  BOUTIQUES.forEach(b=>{
+    try{
+      const raw=localStorage.getItem(b.storageKey);
+      if(!raw) return;
+
+      const data=JSON.parse(raw);
+      const prods=data.stocks||[];
+      const sh=data.salesHistory||[];
+      const mc=data.manualCA||{};
+
+      totalSold += prods.reduce((s,p)=>s+(Number(p.sold)||0),0);
+      totalStockValue += prods.reduce((s,p)=>s+((Number(p.qty)||0)*(Number(p.prix)||0)),0);
+      totalQty += prods.reduce((s,p)=>s+(Number(p.qty)||0),0);
+
+      totalCA += prods.reduce((s,p)=>s+((Number(p.sold)||0)*(Number(p.prix)||0)),0);
+      totalCA += Object.values(mc).reduce((s,v)=>s+(Number(v)||0),0);
+
+      sh.forEach(v=>{
+        if(v.month===curKey) caMois += Number(v.amount)||0;
+        if(v.month===prevKey) caPrev += Number(v.amount)||0;
+      });
+
+      caMois += Number(mc[curKey]||0);
+      caPrev += Number(mc[prevKey]||0);
+
+    }catch(e){}
+  });
+
+  document.getElementById('s-vendu-nb').textContent = totalSold;
+  document.getElementById('s-ca').textContent = totalCA.toFixed(2)+' €';
+  document.getElementById('s-valeur').textContent = totalStockValue.toFixed(2)+' €';
+  document.getElementById('s-qty-total').textContent = totalQty;
+
   document.getElementById('s-ca-mois').textContent = caMois.toFixed(2)+' €';
   document.getElementById('s-ca-prev').textContent = caPrev.toFixed(2)+' €';
   document.getElementById('s-ca-mois-lbl').textContent = 'CA '+fmtMonth(curKey);
