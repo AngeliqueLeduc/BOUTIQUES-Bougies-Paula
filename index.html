@@ -535,7 +535,7 @@ function renderBoutiqueBar(){
   bar.innerHTML = BOUTIQUES.map((b,i)=>
     `<button class="b-btn${i===currentBoutique?' active':''}" onclick="switchBoutique(${i})">${b.emoji} ${b.nom.split('—')[0].split(' ')[0]}</button>`
   ).join('')
-  + `<button class="b-btn" onclick="switchBoutique(${BOUTIQUES.length})">📊</button>`
+  + `<button class="b-btn${currentBoutique>=BOUTIQUES.length?' active':''}" onclick="switchBoutique(${BOUTIQUES.length})">📊</button>`
   + `<button class="b-btn" onclick="openNewBoutique()" style="background:rgba(255,255,255,0.04);border-style:dashed">＋</button>`;
 }
 
@@ -562,6 +562,7 @@ function switchBoutique(idx){
     updateStats();
   } else {
     renderDashboard();
+    updateGlobalStats();
   }
 }
 
@@ -569,7 +570,41 @@ function switchBoutique(idx){
 // STATS
 // ═══════════════════════════════════════════════════════════
 function updateStats(){
-  // Statistiques globales de toutes les boutiques
+  // Statistiques de la boutique actuellement sélectionnée uniquement
+  const valStock = products.reduce((s,p)=>s+(Number(p.qty)||0)*(Number(p.prix)||0),0);
+  document.getElementById('s-valeur').textContent = valStock.toFixed(2)+' €';
+
+  const totalSold = products.reduce((s,p)=>s+(Number(p.sold)||0),0);
+  const caProduits = products.reduce((s,p)=>s+(Number(p.sold)||0)*(Number(p.prix)||0),0);
+  const caForfeits = Object.values(manualCA).reduce((s,v)=>s+(Number(v)||0),0);
+  const caTotal = caProduits + caForfeits;
+
+  document.getElementById('s-vendu-nb').textContent = totalSold;
+  document.getElementById('s-ca').textContent = caTotal.toFixed(2)+' €';
+
+  const qtyTotal = products.reduce((s,p)=>s+(Number(p.qty)||0),0);
+  document.getElementById('s-qty-total').textContent = qtyTotal;
+
+  const now=new Date();
+  const curKey=monthKey(now);
+  const prevKey=monthKey(new Date(now.getFullYear(),now.getMonth()-1,1));
+  let caMois=0, caPrev=0;
+
+  salesHistory.forEach(s=>{
+    if(s.month===curKey) caMois += Number(s.amount)||0;
+    if(s.month===prevKey) caPrev += Number(s.amount)||0;
+  });
+  caMois += Number(manualCA[curKey]||0);
+  caPrev += Number(manualCA[prevKey]||0);
+
+  document.getElementById('s-ca-mois').textContent = caMois.toFixed(2)+' €';
+  document.getElementById('s-ca-prev').textContent = caPrev.toFixed(2)+' €';
+  document.getElementById('s-ca-mois-lbl').textContent = 'CA '+fmtMonth(curKey);
+  document.getElementById('s-ca-prev-lbl').textContent = fmtMonth(prevKey);
+}
+
+function updateGlobalStats(){
+  // Statistiques cumulées de toutes les boutiques, utilisées uniquement dans l'onglet global 📊
   let totalSold=0;
   let totalCA=0;
   let totalStockValue=0;
@@ -617,8 +652,8 @@ function updateStats(){
 
   document.getElementById('s-ca-mois').textContent = caMois.toFixed(2)+' €';
   document.getElementById('s-ca-prev').textContent = caPrev.toFixed(2)+' €';
-  document.getElementById('s-ca-mois-lbl').textContent = 'CA '+fmtMonth(curKey);
-  document.getElementById('s-ca-prev-lbl').textContent = fmtMonth(prevKey);
+  document.getElementById('s-ca-mois-lbl').textContent = 'CA global '+fmtMonth(curKey);
+  document.getElementById('s-ca-prev-lbl').textContent = 'Global '+fmtMonth(prevKey);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -995,6 +1030,8 @@ function renderDashboard(){
   const now=new Date();
   const curKey=monthKey(now);
   const prevKey=monthKey(new Date(now.getFullYear(),now.getMonth()-1,1));
+
+  updateGlobalStats();
 
   // Snapshot automatique du mois précédent
   autoSnapshotGlobal(curKey);
