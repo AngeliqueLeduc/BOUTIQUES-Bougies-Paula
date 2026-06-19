@@ -832,7 +832,7 @@ function renderStats(){
   const maxCA=Math.max(...months.map(m=>byMonth[m].amount));
   el.innerHTML=btnAjout+months.map(m=>{
     const d=byMonth[m]; const barW=maxCA>0?Math.round(d.amount/maxCA*100):0;
-    const top=Object.values(d.prods).sort((a,b)=>b.amount-a.amount).slice(0,5);
+    const top=Object.values(d.prods).sort((a,b)=>b.amount-a.amount);
     const star=top.length?top[0]:null;
     const starLine=star?`<div style="display:flex;align-items:center;gap:6px;padding:6px 0 2px;font-size:12px;color:var(--amber-dark);font-weight:500">🏆 ${star.nom} — ${star.qty} vente${star.qty>1?'s':''} (${star.amount.toFixed(2)} €)</div>`:'';
     const manuelLine=d.manual>0?`<div class="month-prod"><span class="month-prod-nom" style="font-style:italic">Ventes forfaitaires</span><span class="month-prod-val">${d.manual.toFixed(2)} € <span onclick="deleteManualCA('${m}')" style="margin-left:6px;color:var(--red);cursor:pointer;font-size:12px">✕</span></span></div>`:'';
