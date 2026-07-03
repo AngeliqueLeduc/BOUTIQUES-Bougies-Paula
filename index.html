@@ -282,6 +282,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <label>Quantité en stock</label><input type="number" id="f-qty" min="0" inputmode="numeric">
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeModal()">Annuler</button>
+      <button id="btn-delete-product" onclick="deleteProduct()" style="display:none;flex:1;padding:14px;border-radius:var(--radius-sm);border:1px solid var(--red);background:var(--red-bg);color:var(--red);font-size:15px;font-family:'DM Sans',sans-serif;cursor:pointer">Supprimer</button>
       <button class="btn-save" onclick="saveProduct()">Enregistrer</button>
     </div>
   </div>
@@ -1196,8 +1197,26 @@ function calcResult(ca,mk){
 // ═══════════════════════════════════════════════════════════
 // MODAL PRODUIT
 // ═══════════════════════════════════════════════════════════
-function openAdd(){ editIdx=null; document.getElementById('modalTitle').textContent='Ajouter un produit'; ['ref','nom','prix','qty'].forEach(f=>document.getElementById('f-'+f).value=''); document.getElementById('editModal').classList.add('open'); }
-function openEdit(i){ editIdx=i; const p=products[i]; document.getElementById('modalTitle').textContent='Modifier'; document.getElementById('f-ref').value=p.ref; document.getElementById('f-nom').value=p.nom; document.getElementById('f-prix').value=p.prix; document.getElementById('f-qty').value=p.qty; document.getElementById('editModal').classList.add('open'); }
+function openAdd(){
+  editIdx=null;
+  document.getElementById('modalTitle').textContent='Ajouter un produit';
+  ['ref','nom','prix','qty'].forEach(f=>document.getElementById('f-'+f).value='');
+  const delBtn=document.getElementById('btn-delete-product');
+  if(delBtn) delBtn.style.display='none';
+  document.getElementById('editModal').classList.add('open');
+}
+function openEdit(i){
+  editIdx=i;
+  const p=products[i];
+  document.getElementById('modalTitle').textContent='Modifier';
+  document.getElementById('f-ref').value=p.ref;
+  document.getElementById('f-nom').value=p.nom;
+  document.getElementById('f-prix').value=p.prix;
+  document.getElementById('f-qty').value=p.qty;
+  const delBtn=document.getElementById('btn-delete-product');
+  if(delBtn) delBtn.style.display='';
+  document.getElementById('editModal').classList.add('open');
+}
 function closeModal(){ document.getElementById('editModal').classList.remove('open'); }
 function saveProduct(){
   const ref=document.getElementById('f-ref').value.trim();
@@ -1209,6 +1228,23 @@ function saveProduct(){
   else{ products.push({ref,nom,prix,qty,sold:0}); sortProds(products); }
   closeModal(); saveData(); renderList(); updateStats();
   showToast(editIdx!==null?'Produit modifié':'Produit ajouté');
+}
+
+function deleteProduct(){
+  if(editIdx===null || !products[editIdx]) return;
+  const p=products[editIdx];
+  const vendu=p.sold||0;
+  const msg = vendu>0
+    ? `Supprimer définitivement "${p.nom||p.ref}" ?\n\nAttention : ce produit indique ${vendu} article(s) vendu(s). La suppression retire le produit de la liste, mais ne modifie pas l'historique des ventes déjà enregistré.`
+    : `Supprimer définitivement "${p.nom||p.ref}" ?`;
+  if(!confirm(msg)) return;
+  products.splice(editIdx,1);
+  editIdx=null;
+  closeModal();
+  saveData();
+  renderList();
+  updateStats();
+  showToast('Produit supprimé');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1363,12 +1399,16 @@ function saveParamsBoutique(){
   if(!b) return;
   const nom          = document.getElementById('p-nom').value.trim();
   const emoji        = document.getElementById('p-emoji').value.trim() || b.emoji;
-  const commission   = parseFloat(document.getElementById('p-commission').value) || b.commission*100;
-  const loyer        = parseFloat(document.getElementById('p-loyer').value) ?? b.loyer;
+  const commissionVal = document.getElementById('p-commission').value;
+  const commission   = commissionVal === '' ? b.commission*100 : parseFloat(commissionVal);
+  const loyerVal      = document.getElementById('p-loyer').value;
+  const loyer        = loyerVal === '' ? b.loyer : parseFloat(loyerVal);
   const ouverture    = document.getElementById('p-ouverture').value || null;
   const lpVal        = document.getElementById('p-loyer-premier').value;
   const loyerPremierMois = lpVal !== '' ? parseFloat(lpVal) : null;
   if(!nom){ showToast('⚠️ Nom requis'); return; }
+  if(isNaN(commission) || commission < 0){ showToast('⚠️ Commission invalide'); return; }
+  if(isNaN(loyer) || loyer < 0){ showToast('⚠️ Loyer invalide'); return; }
   b.nom              = nom;
   b.emoji            = emoji;
   b.commission       = commission / 100;
@@ -1392,9 +1432,13 @@ function openNewBoutique(){
 function saveNewBoutique(){
   const nom       = document.getElementById('nb-nom').value.trim();
   const emoji     = document.getElementById('nb-emoji').value.trim() || '🏪';
-  const commission= parseFloat(document.getElementById('nb-commission').value) || 20;
-  const loyer     = parseFloat(document.getElementById('nb-loyer').value) || 0;
+  const commissionVal=document.getElementById('nb-commission').value;
+  const commission= commissionVal === '' ? 20 : parseFloat(commissionVal);
+  const loyerVal=document.getElementById('nb-loyer').value;
+  const loyer     = loyerVal === '' ? 0 : parseFloat(loyerVal);
   if(!nom){ showToast('⚠️ Donne un nom à la boutique'); return; }
+  if(isNaN(commission) || commission < 0){ showToast('⚠️ Commission invalide'); return; }
+  if(isNaN(loyer) || loyer < 0){ showToast('⚠️ Loyer invalide'); return; }
   const id        = 'boutique_' + Date.now();
   const storageKey= 'boutique_data_' + id;
   BOUTIQUES.push({ id, nom, emoji, storageKey, loyer, loyerAvril: loyer, commission: commission/100 });
