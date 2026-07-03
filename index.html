@@ -280,9 +280,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <label>Nom</label><input type="text" id="f-nom" autocomplete="off">
     <label>Prix (€)</label><input type="number" id="f-prix" step="0.01" min="0" inputmode="decimal">
     <label>Quantité en stock</label><input type="number" id="f-qty" min="0" inputmode="numeric">
+    <button id="btn-delete-product" onclick="deleteProduct()" style="display:none;width:100%;margin-top:16px;padding:13px;border-radius:var(--radius-sm);border:1px solid var(--red);background:var(--red-bg);color:var(--red);font-size:14px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer">🗑️ Supprimer ce produit</button>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeModal()">Annuler</button>
-      <button id="btn-delete-product" onclick="deleteProduct()" style="display:none;flex:1;padding:14px;border-radius:var(--radius-sm);border:1px solid var(--red);background:var(--red-bg);color:var(--red);font-size:15px;font-family:'DM Sans',sans-serif;cursor:pointer">Supprimer</button>
       <button class="btn-save" onclick="saveProduct()">Enregistrer</button>
     </div>
   </div>
@@ -1214,7 +1214,7 @@ function openEdit(i){
   document.getElementById('f-prix').value=p.prix;
   document.getElementById('f-qty').value=p.qty;
   const delBtn=document.getElementById('btn-delete-product');
-  if(delBtn) delBtn.style.display='';
+  if(delBtn) delBtn.style.display='block';
   document.getElementById('editModal').classList.add('open');
 }
 function closeModal(){ document.getElementById('editModal').classList.remove('open'); }
