@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="Bougies Paula">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>Bougies Paula — Mes Boutiques</title>
+<title>Bougies Paula Manager — V7</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -193,6 +193,19 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .product-actions{display:flex;align-items:center;gap:12px;}
 .btn-delete-product-visible{width:100%;margin-top:16px;padding:14px;border-radius:var(--radius-sm);border:1.5px solid var(--red);background:var(--red-bg);color:var(--red);font-size:15px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;}
 
+/* V7 — ENTREPRISE */
+.enterprise-hero{background:linear-gradient(135deg,var(--rose-framboise),#8f1448);color:#fff;border-radius:var(--radius);padding:16px;margin-bottom:10px;box-shadow:var(--shadow)}
+.enterprise-hero-title{font-family:'DM Serif Display',serif;font-size:21px;color:var(--rose-bonbon)}
+.enterprise-hero-sub{font-size:12px;opacity:.82;margin-top:3px}
+.kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px}
+.kpi{background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:10px}
+.kpi-v{font-size:19px;font-weight:700}.kpi-l{font-size:10px;opacity:.78;margin-top:2px}
+.rank-row{display:grid;grid-template-columns:28px 1fr auto;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--border)}
+.rank-num{width:25px;height:25px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--rose-pale2);color:var(--rose-framboise);font-weight:700;font-size:12px}
+.progress-bg{height:8px;background:var(--bg2);border-radius:10px;overflow:hidden;margin-top:7px}.progress-bar{height:100%;background:linear-gradient(90deg,var(--rose-bonbon),var(--rose-fuchsia));border-radius:10px}
+.enterprise-btn{width:100%;padding:12px;border:none;border-radius:var(--radius-sm);background:var(--rose-fuchsia);color:#fff;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer}
+.proj-note{font-size:11px;color:var(--text3);font-style:italic;line-height:1.4;margin-top:8px}
+
 </style>
 </head>
 <body>
@@ -200,7 +213,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 <div class="header">
   <div class="header-top">
     <div>
-      <h1>Bougies Paula</h1>
+      <h1>Bougies Paula <span style="font-family:DM Sans,sans-serif;font-size:10px;opacity:.75">V7</span></h1>
     </div>
     <div class="header-actions">
       <button class="hbtn" onclick="openProjection()">📈 Projection</button>
@@ -383,10 +396,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <h2>📈 Projection de fin de mois</h2>
 
     <label>Boutique</label>
-    <select id="proj-boutique" onchange="calculateProjection()" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:13px 14px;font-size:15px;font-family:'DM Sans',sans-serif;color:var(--text);outline:none"></select>
+    <select id="proj-boutique" onchange="refreshProjectionCA();calculateProjection()" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:13px 14px;font-size:15px;font-family:'DM Sans',sans-serif;color:var(--text);outline:none"></select>
 
     <label>Date du chiffre d’affaires</label>
-    <input type="date" id="proj-date" oninput="calculateProjection()">
+    <input type="date" id="proj-date" oninput="refreshProjectionCA();calculateProjection()">
 
     <label>Chiffre d’affaires atteint à cette date (€)</label>
     <input type="number" id="proj-ca" step="0.01" min="0" inputmode="decimal" placeholder="Ex : 1492" oninput="calculateProjection()">
@@ -400,6 +413,22 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
     <div class="modal-footer">
       <button class="btn-save" onclick="document.getElementById('projectionModal').classList.remove('open')">Fermer</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Modal objectif entreprise V7 -->
+<div class="modal-bg" id="objectiveModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>🎯 Objectif mensuel</h2>
+    <label>Reste net souhaité (€)</label>
+    <input type="number" id="objective-net" step="50" min="0" inputmode="decimal" placeholder="Ex : 2000">
+    <div class="proj-note">Cet objectif sert à calculer le chiffre d’affaires restant et la moyenne quotidienne nécessaire.</div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="document.getElementById('objectiveModal').classList.remove('open')">Annuler</button>
+      <button class="btn-save" onclick="saveEnterpriseObjective()">Enregistrer</button>
     </div>
   </div>
 </div>
@@ -567,7 +596,7 @@ function renderBoutiqueBar(){
   bar.innerHTML = BOUTIQUES.map((b,i)=>
     `<button class="b-btn${i===currentBoutique?' active':''}" onclick="switchBoutique(${i})">${b.emoji} ${b.nom.split('—')[0].split(' ')[0]}</button>`
   ).join('')
-  + `<button class="b-btn${currentBoutique>=BOUTIQUES.length?' active':''}" onclick="switchBoutique(${BOUTIQUES.length})">📊</button>`
+  + `<button class="b-btn${currentBoutique>=BOUTIQUES.length?' active':''}" onclick="switchBoutique(${BOUTIQUES.length})">🏢 Entreprise</button>`
   + `<button class="b-btn" onclick="openNewBoutique()" style="background:rgba(255,255,255,0.04);border-style:dashed">＋</button>`;
 }
 
@@ -901,10 +930,10 @@ function renderResult(){
 
   // Ventes dans sold mais absentes de salesHistory → rattacher au mois courant
   const soldInHistory={};
-  salesHistory.forEach(s=>{ if(!soldInHistory[s.ref]) soldInHistory[s.ref]=0; soldInHistory[s.ref]+=s.qty; });
+  salesHistory.forEach(s=>{ const k=productStatsKey(s.ref,s.nom,(Number(s.amount)||0)/(Number(s.qty)||1)); if(!soldInHistory[k]) soldInHistory[k]=0; soldInHistory[k]+=Number(s.qty)||0; });
   const curKey=monthKey(new Date());
   products.forEach(p=>{
-    const manquant=(p.sold||0)-(soldInHistory[p.ref]||0);
+    const manquant=(p.sold||0)-(soldInHistory[productStatsKey(p.ref,p.nom,p.prix)]||0);
     if(manquant>0&&p.prix>0){
       if(!byMonth[curKey]) byMonth[curKey]=0;
       byMonth[curKey]+=manquant*p.prix;
@@ -1063,6 +1092,21 @@ function deleteGlobalHist(mk){
   showToast('Entrée supprimée');
 }
 
+const ENTERPRISE_OBJECTIVE_KEY='bougies_paula_objectif_net_v7';
+function getEnterpriseObjective(){ return Number(localStorage.getItem(ENTERPRISE_OBJECTIVE_KEY)||2000); }
+function openEnterpriseObjective(){ document.getElementById('objective-net').value=getEnterpriseObjective(); document.getElementById('objectiveModal').classList.add('open'); }
+function saveEnterpriseObjective(){ const v=Number(document.getElementById('objective-net').value); if(!Number.isFinite(v)||v<0){showToast('⚠️ Objectif invalide');return;} localStorage.setItem(ENTERPRISE_OBJECTIVE_KEY,String(v)); document.getElementById('objectiveModal').classList.remove('open'); renderDashboard(); showToast('🎯 Objectif enregistré'); }
+function estimateGlobalProjection(date){
+  const mk=monthKey(date),rows=BOUTIQUES.map((b,i)=>projectionForBoutique(i,date,getBoutiqueMonthCA(i,mk),true));
+  return {ca:rows.reduce((s,x)=>s+x.projectedCA,0),net:rows.reduce((s,x)=>s+x.r.net,0),rows};
+}
+function requiredGlobalCAForNet(target,mk){
+  let lo=0,hi=Math.max(1000,target*4+5000);
+  const globalNet=ca=>{ const weights=BOUTIQUES.map(b=>1/Math.max(1,BOUTIQUES.length)); return BOUTIQUES.reduce((s,b,i)=>s+calcResultForBoutique(ca*weights[i],mk,b).net,0); };
+  while(globalNet(hi)<target&&hi<1e7) hi*=2;
+  for(let i=0;i<60;i++){const mid=(lo+hi)/2;if(globalNet(mid)<target)lo=mid;else hi=mid;} return hi;
+}
+
 function renderDashboard(){
   const el=document.getElementById('dashboardContent');
   const now=new Date();
@@ -1103,7 +1147,23 @@ function renderDashboard(){
   const netClass=totalNet>=0?'ok':'';
   const prevNetClass=totalPrevNet>=0?'ok':'';
 
+  const objective=getEnterpriseObjective();
+  const proj=estimateGlobalProjection(now);
+  const requiredCA=requiredGlobalCAForNet(objective,curKey);
+  const remainingCA=Math.max(0,requiredCA-totalMois);
+  const lastDay=new Date(now.getFullYear(),now.getMonth()+1,0);
+  const remainingDays=Math.max(0,countProjectionDays(new Date(now.getFullYear(),now.getMonth(),now.getDate()+1),lastDay,true));
+  const dailyNeeded=remainingDays?remainingCA/remainingDays:remainingCA;
+  const ranking=[...lignes].sort((a,b)=>b.caMois-a.caMois);
+  const allProducts={};
+  BOUTIQUES.forEach((b,i)=>{try{const d=JSON.parse(localStorage.getItem(b.storageKey)||'{}');(d.salesHistory||[]).filter(x=>x.month===curKey).forEach(x=>{const k=productStatsKey(x.ref,x.nom,(Number(x.amount)||0)/(Number(x.qty)||1));if(!allProducts[k])allProducts[k]={nom:x.nom||x.ref||'Article',qty:0,ca:0};allProducts[k].qty+=Number(x.qty)||0;allProducts[k].ca+=Number(x.amount)||0;});}catch(e){}});
+  const topProducts=Object.values(allProducts).sort((a,b)=>b.qty-a.qty||b.ca-a.ca).slice(0,5);
+  const progress=objective>0?Math.max(0,Math.min(100,totalNet/objective*100)):100;
   el.innerHTML=`
+    <div class="enterprise-hero"><div class="enterprise-hero-title">🏢 Mon Entreprise</div><div class="enterprise-hero-sub">Tableau de bord Bougies Paula — ${fmtMonth(curKey)}</div><div class="kpi-grid"><div class="kpi"><div class="kpi-v">${totalMois.toFixed(2)} €</div><div class="kpi-l">CA actuel</div></div><div class="kpi"><div class="kpi-v">${totalNet.toFixed(2)} €</div><div class="kpi-l">Net actuel estimé</div></div><div class="kpi"><div class="kpi-v">${proj.ca.toFixed(2)} €</div><div class="kpi-l">CA projeté</div></div><div class="kpi"><div class="kpi-v">${proj.net.toFixed(2)} €</div><div class="kpi-l">Net projeté</div></div></div></div>
+    <div class="dash-card"><div class="dash-title">🎯 Objectif mensuel</div><div class="dash-row"><span class="dash-lbl">Objectif net</span><span class="dash-val">${objective.toFixed(2)} €</span></div><div class="dash-row"><span class="dash-lbl">CA total estimé nécessaire</span><span class="dash-val">${requiredCA.toFixed(2)} €</span></div><div class="dash-row"><span class="dash-lbl">CA restant à réaliser</span><span class="dash-val">${remainingCA.toFixed(2)} €</span></div><div class="dash-row"><span class="dash-lbl">Jours hors dimanches restants</span><span class="dash-val">${remainingDays}</span></div><div class="dash-row"><span class="dash-lbl">CA moyen nécessaire par jour</span><span class="dash-val ok">${dailyNeeded.toFixed(2)} €</span></div><div class="progress-bg"><div class="progress-bar" style="width:${progress}%"></div></div><div style="font-size:11px;color:var(--text3);margin:5px 0 10px">Progression estimée : ${progress.toFixed(0)}%</div><button class="enterprise-btn" onclick="openEnterpriseObjective()">Modifier mon objectif</button></div>
+    <div class="dash-card"><div class="dash-title">🏆 Classement des boutiques</div>${ranking.map((l,i)=>`<div class="rank-row"><div class="rank-num">${i+1}</div><div><div style="font-weight:500">${l.b.emoji} ${l.b.nom}</div><div style="font-size:11px;color:var(--text3)">Net : ${l.rMois.net.toFixed(2)} €</div></div><div style="font-weight:600;color:var(--rose-framboise)">${l.caMois.toFixed(2)} €</div></div>`).join('')}</div>
+    <div class="dash-card"><div class="dash-title">⭐ Produits les plus vendus</div>${topProducts.length?topProducts.map((p,i)=>`<div class="rank-row"><div class="rank-num">${i+1}</div><div>${p.nom}</div><div style="text-align:right;font-weight:600">${p.qty} vente${p.qty>1?'s':''}<div style="font-size:11px;color:var(--text3)">${p.ca.toFixed(2)} €</div></div></div>`).join(''):'<div class="empty" style="padding:1rem 0">Aucune vente détaillée ce mois-ci.</div>'}</div>
     <div class="dash-card" style="border:2px solid var(--amber);background:var(--amber-pale);margin-bottom:14px">
       <div class="dash-title">📊 Vue globale — ${fmtMonth(curKey)}</div>
       <div class="dash-row"><span class="dash-lbl">Taux par boutique</span><span class="dash-val">${BOUTIQUES.map(b=>`${b.nom.split('—')[0].trim()} ${(Number(b.commission)||0)*100}%`).join(' · ')}</span></div>
@@ -1255,70 +1315,63 @@ function countProjectionDays(start,end,excludeSundays){
   return count;
 }
 
-function openProjection(){
-  const select=document.getElementById('proj-boutique');
-  select.innerHTML=BOUTIQUES.map((b,i)=>`<option value="${i}">${b.emoji||'🏪'} ${b.nom}</option>`).join('');
-  select.value=String(currentBoutique<BOUTIQUES.length?currentBoutique:0);
-
-  const today=new Date();
-  const localDate=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
-  document.getElementById('proj-date').value=localDate;
-
-  // Préremplit le CA du mois déjà enregistré pour la boutique sélectionnée
-  const idx=Number(select.value)||0;
+function getBoutiqueMonthCA(idx,mk){
+  const b=BOUTIQUES[idx]; if(!b) return 0;
   let ca=0;
   try{
-    const raw=localStorage.getItem(BOUTIQUES[idx].storageKey);
-    if(raw){
-      const data=JSON.parse(raw);
-      const mk=monthKey(today);
-      (data.salesHistory||[]).forEach(v=>{ if(v.month===mk) ca+=Number(v.amount)||0; });
-      ca+=Number((data.manualCA||{})[mk]||0);
-    }
+    const raw=localStorage.getItem(b.storageKey);
+    if(raw){ const d=JSON.parse(raw); (d.salesHistory||[]).forEach(v=>{if(v.month===mk) ca+=Number(v.amount)||0;}); ca+=Number((d.manualCA||{})[mk]||0); }
   }catch(e){}
-  document.getElementById('proj-ca').value=ca>0?ca.toFixed(2):'';
-  document.getElementById('projectionModal').classList.add('open');
-  calculateProjection();
+  return ca;
 }
-
-function calculateProjection(){
-  const result=document.getElementById('projectionResult');
-  const idx=Number(document.getElementById('proj-boutique').value);
-  const b=BOUTIQUES[idx];
-  const date=projectionDateToLocal(document.getElementById('proj-date').value);
-  const caToDate=Number(document.getElementById('proj-ca').value);
-  const excludeSundays=document.getElementById('proj-exclude-sundays').checked;
-
-  if(!b || !date || !Number.isFinite(caToDate) || caToDate<0){
-    result.innerHTML='<div style="font-size:13px;color:var(--text3);text-align:center;padding:12px">Renseigne une date et un chiffre d’affaires pour voir la projection.</div>';
-    return;
+function isKerityBoutique(b){ return /kerity|kérity/i.test((b&&b.nom)||''); }
+function isSiteBoutique(b){ return /site|internet|web/i.test((b&&b.nom)||''); }
+function countWednesdays(start,end){
+  let n=0,d=new Date(start.getFullYear(),start.getMonth(),start.getDate()),last=new Date(end.getFullYear(),end.getMonth(),end.getDate());
+  while(d<=last){ if(d.getDay()===3) n++; d.setDate(d.getDate()+1); } return n;
+}
+function projectionForBoutique(idx,date,caToDate,excludeSundays){
+  const b=BOUTIQUES[idx], first=new Date(date.getFullYear(),date.getMonth(),1), last=new Date(date.getFullYear(),date.getMonth()+1,0), mk=monthKey(date);
+  if(isSiteBoutique(b)){
+    const r=calcResultForBoutique(caToDate,mk,b);
+    return {mode:'site',elapsed:0,total:0,remaining:0,avg:0,projectedCA:caToDate,r,note:'Les ventes du site étant irrégulières, aucun rythme quotidien automatique n’est appliqué. Le CA saisi est conservé comme estimation prudente.'};
   }
-
-  const firstDay=new Date(date.getFullYear(),date.getMonth(),1);
-  const lastDay=new Date(date.getFullYear(),date.getMonth()+1,0);
-  const elapsed=countProjectionDays(firstDay,date,excludeSundays);
-  const total=countProjectionDays(firstDay,lastDay,excludeSundays);
-  const remaining=Math.max(0,total-elapsed);
-  const avg=elapsed>0?caToDate/elapsed:0;
-  const projectedCA=avg*total;
-  const mk=monthKey(date);
-  const r=calcResultForBoutique(projectedCA,mk,b);
-  const netClass=r.net>=0?'var(--rose-fuchsia)':'var(--red)';
-  const commissionPct=(Number(b.commission)||0)*100;
-
-  result.innerHTML=`
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px">
-      <div style="font-family:'DM Serif Display',serif;font-size:17px;margin-bottom:10px;color:var(--text)">${b.emoji||'🏪'} ${b.nom}</div>
-      <div class="result-row"><span class="result-row-lbl">Jours comptés à la date</span><span class="result-row-val">${elapsed} / ${total}</span></div>
-      <div class="result-row"><span class="result-row-lbl">Moyenne par jour</span><span class="result-row-val">${avg.toFixed(2)} €</span></div>
-      <div class="result-row"><span class="result-row-lbl">Jours restants</span><span class="result-row-val">${remaining}</span></div>
-      <div class="result-row" style="background:rgba(194,24,91,0.07)"><span class="result-row-lbl" style="font-weight:600">CA projeté fin de mois</span><span class="result-row-val" style="color:var(--amber-dark);font-size:16px">${projectedCA.toFixed(2)} €</span></div>
-      <div class="result-row"><span class="result-row-lbl">− Commission ${commissionPct.toFixed(commissionPct%1?1:0)}%</span><span class="result-row-val minus">− ${r.commission.toFixed(2)} €</span></div>
-      <div class="result-row"><span class="result-row-lbl">− Loyer</span><span class="result-row-val minus">− ${r.loyer.toFixed(2)} €</span></div>
-      <div class="result-row"><span class="result-row-lbl">− URSSAF ${(URSSAF_RATE*100).toFixed(1).replace('.',',')}%</span><span class="result-row-val urssaf">− ${r.urssaf.toFixed(2)} €</span></div>
-      <div class="result-row" style="border-top:2px solid var(--amber);margin-top:5px;padding-top:10px"><span class="result-row-lbl" style="font-weight:700">💶 Reste net projeté</span><span style="font-size:19px;font-weight:700;color:${netClass}">${r.net.toFixed(2)} €</span></div>
-    </div>
-    <div style="font-size:11px;color:var(--text3);margin-top:8px;font-style:italic;line-height:1.4">Projection calculée en conservant la moyenne de chiffre d’affaires réalisée depuis le 1er du mois jusqu’à la date choisie.</div>`;
+  if(isKerityBoutique(b)){
+    const augustEnd=new Date(date.getFullYear(),7,31);
+    const effectiveLast=last<augustEnd?last:augustEnd;
+    const elapsed=countWednesdays(first,date>effectiveLast?effectiveLast:date);
+    const total=date.getMonth()>7?0:countWednesdays(first,effectiveLast);
+    const remaining=Math.max(0,total-elapsed),avg=elapsed?caToDate/elapsed:0,projectedCA=avg*total;
+    return {mode:'kerity',elapsed,total,remaining,avg,projectedCA,r:calcResultForBoutique(projectedCA,mk,b),note:'Kerity est projetée uniquement sur les mercredis, jusqu’au 31 août.'};
+  }
+  const elapsed=countProjectionDays(first,date,excludeSundays),total=countProjectionDays(first,last,excludeSundays),remaining=Math.max(0,total-elapsed),avg=elapsed?caToDate/elapsed:0,projectedCA=avg*total;
+  return {mode:'standard',elapsed,total,remaining,avg,projectedCA,r:calcResultForBoutique(projectedCA,mk,b),note:'Projection calculée à partir de la moyenne réalisée depuis le début du mois.'};
+}
+function openProjection(){
+  const select=document.getElementById('proj-boutique');
+  select.innerHTML=`<option value="global">🏢 Projection globale</option>`+BOUTIQUES.map((b,i)=>`<option value="${i}">${b.emoji||'🏪'} ${b.nom}</option>`).join('');
+  select.value=currentBoutique<BOUTIQUES.length?String(currentBoutique):'global';
+  const today=new Date(),localDate=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+  document.getElementById('proj-date').value=localDate;
+  refreshProjectionCA();
+  document.getElementById('projectionModal').classList.add('open'); calculateProjection();
+}
+function refreshProjectionCA(){
+  const value=document.getElementById('proj-boutique').value,date=projectionDateToLocal(document.getElementById('proj-date').value)||new Date(),mk=monthKey(date);
+  let ca=value==='global'?BOUTIQUES.reduce((s,b,i)=>s+getBoutiqueMonthCA(i,mk),0):getBoutiqueMonthCA(Number(value),mk);
+  document.getElementById('proj-ca').value=ca>0?ca.toFixed(2):'';
+}
+function calculateProjection(){
+  const result=document.getElementById('projectionResult'),value=document.getElementById('proj-boutique').value,date=projectionDateToLocal(document.getElementById('proj-date').value),entered=Number(document.getElementById('proj-ca').value),exclude=document.getElementById('proj-exclude-sundays').checked;
+  if(!date||!Number.isFinite(entered)||entered<0){result.innerHTML='<div style="font-size:13px;color:var(--text3);text-align:center;padding:12px">Renseigne une date et un chiffre d’affaires.</div>';return;}
+  if(value==='global'){
+    const mk=monthKey(date),actuals=BOUTIQUES.map((b,i)=>getBoutiqueMonthCA(i,mk)),actualTotal=actuals.reduce((a,b)=>a+b,0),scale=actualTotal>0?entered/actualTotal:1;
+    const rows=BOUTIQUES.map((b,i)=>projectionForBoutique(i,date,actuals[i]*scale,exclude));
+    const projectedCA=rows.reduce((s,x)=>s+x.projectedCA,0),comm=rows.reduce((s,x)=>s+x.r.commission,0),loyer=rows.reduce((s,x)=>s+x.r.loyer,0),urssaf=rows.reduce((s,x)=>s+x.r.urssaf,0),net=rows.reduce((s,x)=>s+x.r.net,0);
+    result.innerHTML=`<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px"><div style="font-family:'DM Serif Display',serif;font-size:18px;margin-bottom:10px">🏢 Bougies Paula — Global</div><div class="result-row"><span class="result-row-lbl">CA atteint</span><span class="result-row-val">${entered.toFixed(2)} €</span></div><div class="result-row" style="background:rgba(194,24,91,.07)"><span class="result-row-lbl" style="font-weight:600">CA projeté fin de mois</span><span class="result-row-val" style="font-size:16px;color:var(--rose-framboise)">${projectedCA.toFixed(2)} €</span></div><div class="result-row"><span class="result-row-lbl">− Commissions</span><span class="result-row-val minus">− ${comm.toFixed(2)} €</span></div><div class="result-row"><span class="result-row-lbl">− Loyers</span><span class="result-row-val minus">− ${loyer.toFixed(2)} €</span></div><div class="result-row"><span class="result-row-lbl">− URSSAF</span><span class="result-row-val urssaf">− ${urssaf.toFixed(2)} €</span></div><div class="result-row" style="border-top:2px solid var(--amber);margin-top:5px;padding-top:10px"><span class="result-row-lbl" style="font-weight:700">💶 Reste net projeté</span><span style="font-size:19px;font-weight:700;color:${net>=0?'var(--rose-fuchsia)':'var(--red)'}">${net.toFixed(2)} €</span></div></div>`+rows.map((x,i)=>`<div class="dash-card" style="margin-top:8px"><div class="dash-title">${BOUTIQUES[i].emoji} ${BOUTIQUES[i].nom}</div><div class="dash-row"><span class="dash-lbl">CA projeté</span><span class="dash-val">${x.projectedCA.toFixed(2)} €</span></div><div class="dash-row"><span class="dash-lbl">Net projeté</span><span class="dash-val ${x.r.net>=0?'ok':''}">${x.r.net.toFixed(2)} €</span></div><div class="proj-note">${x.note}</div></div>`).join(''); return;
+  }
+  const idx=Number(value),b=BOUTIQUES[idx],x=projectionForBoutique(idx,date,entered,exclude),r=x.r,pct=(Number(b.commission)||0)*100;
+  result.innerHTML=`<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px"><div style="font-family:'DM Serif Display',serif;font-size:17px;margin-bottom:10px">${b.emoji||'🏪'} ${b.nom}</div>${x.mode!=='site'?`<div class="result-row"><span class="result-row-lbl">Jours / séances comptés</span><span class="result-row-val">${x.elapsed} / ${x.total}</span></div><div class="result-row"><span class="result-row-lbl">Moyenne</span><span class="result-row-val">${x.avg.toFixed(2)} €</span></div><div class="result-row"><span class="result-row-lbl">Restants</span><span class="result-row-val">${x.remaining}</span></div>`:''}<div class="result-row" style="background:rgba(194,24,91,.07)"><span class="result-row-lbl" style="font-weight:600">CA projeté</span><span class="result-row-val" style="font-size:16px;color:var(--rose-framboise)">${x.projectedCA.toFixed(2)} €</span></div><div class="result-row"><span class="result-row-lbl">− Commission ${pct.toFixed(pct%1?1:0)}%</span><span class="result-row-val minus">− ${r.commission.toFixed(2)} €</span></div><div class="result-row"><span class="result-row-lbl">− Loyer</span><span class="result-row-val minus">− ${r.loyer.toFixed(2)} €</span></div><div class="result-row"><span class="result-row-lbl">− URSSAF</span><span class="result-row-val urssaf">− ${r.urssaf.toFixed(2)} €</span></div><div class="result-row" style="border-top:2px solid var(--amber);margin-top:5px;padding-top:10px"><span class="result-row-lbl" style="font-weight:700">💶 Reste net projeté</span><span style="font-size:19px;font-weight:700;color:${r.net>=0?'var(--rose-fuchsia)':'var(--red)'}">${r.net.toFixed(2)} €</span></div></div><div class="proj-note">${x.note}</div>`;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1587,6 +1640,7 @@ function saveNewBoutique(){
 
 document.getElementById('newBoutiqueModal').addEventListener('click',e=>{ if(e.target===document.getElementById('newBoutiqueModal')) document.getElementById('newBoutiqueModal').classList.remove('open'); });
 document.getElementById('ghistModal').addEventListener('click',e=>{ if(e.target===document.getElementById('ghistModal')) document.getElementById('ghistModal').classList.remove('open'); });
+document.getElementById('objectiveModal').addEventListener('click',e=>{ if(e.target===document.getElementById('objectiveModal')) document.getElementById('objectiveModal').classList.remove('open'); });
 document.getElementById('projectionModal').addEventListener('click',e=>{ if(e.target===document.getElementById('projectionModal')) document.getElementById('projectionModal').classList.remove('open'); });
 
 // ── DÉMARRAGE ─────────────────────────────────────────────
