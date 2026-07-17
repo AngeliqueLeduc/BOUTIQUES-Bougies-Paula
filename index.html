@@ -466,16 +466,7 @@ let editIdx = null, activeFilter = '';
 function monthKey(date){ const d=new Date(date); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
 function fmtMonth(key){ const [y,m]=key.split('-'); return ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'][parseInt(m)-1]+' '+y; }
 function sortProds(arr){ return arr.sort((a,b)=>a.nom.localeCompare(b.nom,'fr')); }
-function getLoyer(mk){ const b=BOUTIQUES[currentBoutique]; return mk.endsWith('-04')?b.loyerAvril:b.loyer; }
-function calcResult(ca,mk){
-  const loyer=getLoyer(mk);
-  const commission=parseFloat((ca*COMMISSION).toFixed(2));
-  const virementLBDA=parseFloat((ca-commission).toFixed(2));
-  const urssaf=parseFloat((ca*URSSAF_RATE).toFixed(2));
-  const caApres=parseFloat((ca-commission-loyer).toFixed(2));
-  const net=parseFloat((caApres-urssaf).toFixed(2));
-  return {ca,commission,virementLBDA,loyer,urssaf,caApres,net};
-}
+function getLoyer(mk){ const b=BOUTIQUES[currentBoutique]; return calcResultForBoutique(0,mk,b).loyer; }
 
 // ═══════════════════════════════════════════════════════════
 // PERSISTENCE PAR BOUTIQUE
@@ -897,7 +888,7 @@ function renderResult(){
     const annualCard=`<div class="result-card" style="border:2px solid var(--amber);background:var(--amber-pale);margin-bottom:14px">
       <div class="result-header"><span class="result-month" style="font-size:19px">📅 Cumul ${year}</span><span class="result-net ${cumClass}" style="font-size:20px">${cumNet.toFixed(2)} €</span></div>
       <div class="result-row"><span class="result-row-lbl">CA total ${year}</span><span class="result-row-val">${cumCA.toFixed(2)} €</span></div>
-      <div class="result-row"><span class="result-row-lbl">− Commissions 20%</span><span class="result-row-val minus">− ${cumComm.toFixed(2)} €</span></div>
+      <div class="result-row"><span class="result-row-lbl">− Commissions ${(BOUTIQUES[currentBoutique].commission*100).toFixed(0)}%</span><span class="result-row-val minus">− ${cumComm.toFixed(2)} €</span></div>
       <div class="result-row"><span class="result-row-lbl">− Loyers</span><span class="result-row-val minus">− ${cumLoyer.toFixed(2)} €</span></div>
       <div class="result-row"><span class="result-row-lbl">− URSSAF 12,3%</span><span class="result-row-val urssaf">− ${cumUrssaf.toFixed(2)} €</span></div>
       <div class="result-row total-line" style="background:rgba(194,24,91,0.12)"><span class="result-row-lbl" style="font-weight:600">💶 Reste net annuel</span><span class="result-net ${cumClass}" style="font-size:18px;font-weight:600">${cumNet.toFixed(2)} €</span></div>
@@ -1077,6 +1068,7 @@ function renderDashboard(){
   el.innerHTML=`
     <div class="dash-card" style="border:2px solid var(--amber);background:var(--amber-pale);margin-bottom:14px">
       <div class="dash-title">📊 Vue globale — ${fmtMonth(curKey)}</div>
+      <div class="dash-row"><span class="dash-lbl">Taux par boutique</span><span class="dash-val">${BOUTIQUES.map(b=>`${b.nom.split('—')[0].trim()} ${(Number(b.commission)||0)*100}%`).join(' · ')}</span></div>
       <div class="dash-row"><span class="dash-lbl">CA total ce mois</span><span class="dash-val ok">${totalMois.toFixed(2)} €</span></div>
       <div class="dash-row"><span class="dash-lbl">− Commissions (total)</span><span class="dash-val" style="color:var(--red)">− ${totalComm.toFixed(2)} €</span></div>
       <div class="dash-row" style="background:rgba(194,24,91,0.07)"><span class="dash-lbl" style="font-weight:500">💳 Virements attendus</span><span class="dash-val" style="color:var(--amber-dark);font-weight:600">${totalVirement.toFixed(2)} €</span></div>
@@ -1106,7 +1098,8 @@ function renderDashboard(){
     <div class="dash-card">
       <div class="dash-title">${l.b.emoji} ${l.b.nom} — <span style="font-size:13px;font-family:'DM Sans',sans-serif;font-weight:400;color:var(--text3)">${fmtMonth(curKey)}</span></div>
       <div class="dash-row"><span class="dash-lbl">CA du mois</span><span class="dash-val ok">${r.ca.toFixed(2)} €</span></div>
-      <div class="dash-row"><span class="dash-lbl">− Commission ${(l.b.commission*100).toFixed(0)}%</span><span class="dash-val" style="color:var(--red)">− ${r.commission.toFixed(2)} €</span></div>
+      <div class="dash-row"><span class="dash-lbl">Taux de commission appliqué</span><span class="dash-val">${(l.b.commission*100).toFixed(0)}%</span></div>
+      <div class="dash-row"><span class="dash-lbl">− Commission</span><span class="dash-val" style="color:var(--red)">− ${r.commission.toFixed(2)} €</span></div>
       <div class="dash-row" style="background:rgba(194,24,91,0.07)"><span class="dash-lbl" style="font-weight:500">💳 Virement</span><span class="dash-val" style="color:var(--amber-dark);font-weight:600">${r.virementLBDA.toFixed(2)} €</span></div>
       <div class="dash-row"><span class="dash-lbl">− Loyer${loyerNote}</span><span class="dash-val" style="color:var(--red)">− ${r.loyer.toFixed(2)} €</span></div>
       <div class="dash-row"><span class="dash-lbl" style="font-size:11px;color:var(--text3)">Base avant URSSAF</span><span class="dash-val" style="font-size:12px;color:var(--text3)">${r.caApres.toFixed(2)} €</span></div>
@@ -1190,7 +1183,8 @@ function calcResultForBoutique(ca,mk,b){
     const ouvKey = ouv.getFullYear()+'-'+String(ouv.getMonth()+1).padStart(2,'0');
     if(mk === ouvKey) loyer = b.loyerPremierMois;
   }
-  const commission   = parseFloat((ca * b.commission).toFixed(2));
+  const tauxCommission = Number(b.commission) || 0;
+  const commission   = parseFloat((ca * tauxCommission).toFixed(2));
   const virementLBDA = parseFloat((ca - commission).toFixed(2));
   const urssaf       = parseFloat((ca * URSSAF_RATE).toFixed(2));
   const caApres      = parseFloat((ca - commission - loyer).toFixed(2));
@@ -1327,7 +1321,7 @@ function exportXLSX(){
     ['TOTAL',parseFloat(ms.reduce((s,m)=>s+byMonth[m].produits,0).toFixed(2)),parseFloat(ms.reduce((s,m)=>s+(byMonth[m].forfait||0),0).toFixed(2)),parseFloat(ms.reduce((s,m)=>s+byMonth[m].produits+(byMonth[m].forfait||0),0).toFixed(2)),'','']];
   const ws2=XLSX.utils.aoa_to_sheet(dataCA); ws2['!cols']=[{wch:12},{wch:14},{wch:16},{wch:12},{wch:28},{wch:10}];
   XLSX.utils.book_append_sheet(wb,ws2,'CA par mois');
-  const dataResult=[['Mois','CA','Commission 20%','Loyer','Base avant URSSAF','URSSAF 12.3%','Reste net'],
+  const dataResult=[['Mois','CA','Commission','Loyer','Base avant URSSAF','URSSAF 12.3%','Reste net'],
     ...ms.map(m=>{ const ca=parseFloat(((byMonth[m].produits||0)+(byMonth[m].forfait||0)).toFixed(2)); const r=calcResult(ca,m); return [fmtMonth(m),r.ca,r.commission,r.loyer,r.caApres,r.urssaf,r.net]; })];
   const years=[...new Set(ms.map(m=>m.slice(0,4)))];
   years.forEach(y=>{ const mY=ms.filter(m=>m.startsWith(y)); let tCA=0,tC=0,tL=0,tB=0,tU=0,tN=0; mY.forEach(m=>{ const ca=parseFloat(((byMonth[m].produits||0)+(byMonth[m].forfait||0)).toFixed(2)); const r=calcResult(ca,m); tCA+=r.ca;tC+=r.commission;tL+=r.loyer;tB+=r.caApres;tU+=r.urssaf;tN+=r.net; }); dataResult.push(['TOTAL '+y,...[tCA,tC,tL,tB,tU,tN].map(v=>parseFloat(v.toFixed(2)))]); });
