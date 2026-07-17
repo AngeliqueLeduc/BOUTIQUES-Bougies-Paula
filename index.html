@@ -203,6 +203,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <h1>Bougies Paula</h1>
     </div>
     <div class="header-actions">
+      <button class="hbtn" onclick="openProjection()">📈 Projection</button>
       <button class="hbtn" id="btn-params" onclick="openParamsBoutique()">⚙️ Params</button>
       <button class="hbtn" onclick="exportXLSX()">↓ Excel</button>
       <button class="hbtn" onclick="exportDonnees()">💾</button>
@@ -371,6 +372,34 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div class="modal-footer">
       <button class="btn-cancel" onclick="document.getElementById('newBoutiqueModal').classList.remove('open')">Annuler</button>
       <button class="btn-save" onclick="saveNewBoutique()">Créer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal projection de fin de mois -->
+<div class="modal-bg" id="projectionModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>📈 Projection de fin de mois</h2>
+
+    <label>Boutique</label>
+    <select id="proj-boutique" onchange="calculateProjection()" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:13px 14px;font-size:15px;font-family:'DM Sans',sans-serif;color:var(--text);outline:none"></select>
+
+    <label>Date du chiffre d’affaires</label>
+    <input type="date" id="proj-date" oninput="calculateProjection()">
+
+    <label>Chiffre d’affaires atteint à cette date (€)</label>
+    <input type="number" id="proj-ca" step="0.01" min="0" inputmode="decimal" placeholder="Ex : 1492" oninput="calculateProjection()">
+
+    <label style="display:flex;align-items:center;gap:9px;text-transform:none;letter-spacing:0;font-size:13px;margin-top:14px">
+      <input type="checkbox" id="proj-exclude-sundays" checked onchange="calculateProjection()" style="width:18px;height:18px;padding:0">
+      Ne pas compter les dimanches
+    </label>
+
+    <div id="projectionResult" style="margin-top:16px"></div>
+
+    <div class="modal-footer">
+      <button class="btn-save" onclick="document.getElementById('projectionModal').classList.remove('open')">Fermer</button>
     </div>
   </div>
 </div>
@@ -1197,6 +1226,93 @@ function calcResult(ca,mk){
 }
 
 // ═══════════════════════════════════════════════════════════
+// PROJECTION DE FIN DE MOIS
+// ═══════════════════════════════════════════════════════════
+function projectionDateToLocal(value){
+  if(!value) return null;
+  const parts=value.split('-').map(Number);
+  if(parts.length!==3 || parts.some(isNaN)) return null;
+  return new Date(parts[0],parts[1]-1,parts[2]);
+}
+
+function countProjectionDays(start,end,excludeSundays){
+  let count=0;
+  const d=new Date(start.getFullYear(),start.getMonth(),start.getDate());
+  const last=new Date(end.getFullYear(),end.getMonth(),end.getDate());
+  while(d<=last){
+    if(!excludeSundays || d.getDay()!==0) count++;
+    d.setDate(d.getDate()+1);
+  }
+  return count;
+}
+
+function openProjection(){
+  const select=document.getElementById('proj-boutique');
+  select.innerHTML=BOUTIQUES.map((b,i)=>`<option value="${i}">${b.emoji||'🏪'} ${b.nom}</option>`).join('');
+  select.value=String(currentBoutique<BOUTIQUES.length?currentBoutique:0);
+
+  const today=new Date();
+  const localDate=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+  document.getElementById('proj-date').value=localDate;
+
+  // Préremplit le CA du mois déjà enregistré pour la boutique sélectionnée
+  const idx=Number(select.value)||0;
+  let ca=0;
+  try{
+    const raw=localStorage.getItem(BOUTIQUES[idx].storageKey);
+    if(raw){
+      const data=JSON.parse(raw);
+      const mk=monthKey(today);
+      (data.salesHistory||[]).forEach(v=>{ if(v.month===mk) ca+=Number(v.amount)||0; });
+      ca+=Number((data.manualCA||{})[mk]||0);
+    }
+  }catch(e){}
+  document.getElementById('proj-ca').value=ca>0?ca.toFixed(2):'';
+  document.getElementById('projectionModal').classList.add('open');
+  calculateProjection();
+}
+
+function calculateProjection(){
+  const result=document.getElementById('projectionResult');
+  const idx=Number(document.getElementById('proj-boutique').value);
+  const b=BOUTIQUES[idx];
+  const date=projectionDateToLocal(document.getElementById('proj-date').value);
+  const caToDate=Number(document.getElementById('proj-ca').value);
+  const excludeSundays=document.getElementById('proj-exclude-sundays').checked;
+
+  if(!b || !date || !Number.isFinite(caToDate) || caToDate<0){
+    result.innerHTML='<div style="font-size:13px;color:var(--text3);text-align:center;padding:12px">Renseigne une date et un chiffre d’affaires pour voir la projection.</div>';
+    return;
+  }
+
+  const firstDay=new Date(date.getFullYear(),date.getMonth(),1);
+  const lastDay=new Date(date.getFullYear(),date.getMonth()+1,0);
+  const elapsed=countProjectionDays(firstDay,date,excludeSundays);
+  const total=countProjectionDays(firstDay,lastDay,excludeSundays);
+  const remaining=Math.max(0,total-elapsed);
+  const avg=elapsed>0?caToDate/elapsed:0;
+  const projectedCA=avg*total;
+  const mk=monthKey(date);
+  const r=calcResultForBoutique(projectedCA,mk,b);
+  const netClass=r.net>=0?'var(--rose-fuchsia)':'var(--red)';
+  const commissionPct=(Number(b.commission)||0)*100;
+
+  result.innerHTML=`
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px">
+      <div style="font-family:'DM Serif Display',serif;font-size:17px;margin-bottom:10px;color:var(--text)">${b.emoji||'🏪'} ${b.nom}</div>
+      <div class="result-row"><span class="result-row-lbl">Jours comptés à la date</span><span class="result-row-val">${elapsed} / ${total}</span></div>
+      <div class="result-row"><span class="result-row-lbl">Moyenne par jour</span><span class="result-row-val">${avg.toFixed(2)} €</span></div>
+      <div class="result-row"><span class="result-row-lbl">Jours restants</span><span class="result-row-val">${remaining}</span></div>
+      <div class="result-row" style="background:rgba(194,24,91,0.07)"><span class="result-row-lbl" style="font-weight:600">CA projeté fin de mois</span><span class="result-row-val" style="color:var(--amber-dark);font-size:16px">${projectedCA.toFixed(2)} €</span></div>
+      <div class="result-row"><span class="result-row-lbl">− Commission ${commissionPct.toFixed(commissionPct%1?1:0)}%</span><span class="result-row-val minus">− ${r.commission.toFixed(2)} €</span></div>
+      <div class="result-row"><span class="result-row-lbl">− Loyer</span><span class="result-row-val minus">− ${r.loyer.toFixed(2)} €</span></div>
+      <div class="result-row"><span class="result-row-lbl">− URSSAF ${(URSSAF_RATE*100).toFixed(1).replace('.',',')}%</span><span class="result-row-val urssaf">− ${r.urssaf.toFixed(2)} €</span></div>
+      <div class="result-row" style="border-top:2px solid var(--amber);margin-top:5px;padding-top:10px"><span class="result-row-lbl" style="font-weight:700">💶 Reste net projeté</span><span style="font-size:19px;font-weight:700;color:${netClass}">${r.net.toFixed(2)} €</span></div>
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-top:8px;font-style:italic;line-height:1.4">Projection calculée en conservant la moyenne de chiffre d’affaires réalisée depuis le 1er du mois jusqu’à la date choisie.</div>`;
+}
+
+// ═══════════════════════════════════════════════════════════
 // MODAL PRODUIT
 // ═══════════════════════════════════════════════════════════
 function openAdd(){
@@ -1459,6 +1575,7 @@ function saveNewBoutique(){
 
 document.getElementById('newBoutiqueModal').addEventListener('click',e=>{ if(e.target===document.getElementById('newBoutiqueModal')) document.getElementById('newBoutiqueModal').classList.remove('open'); });
 document.getElementById('ghistModal').addEventListener('click',e=>{ if(e.target===document.getElementById('ghistModal')) document.getElementById('ghistModal').classList.remove('open'); });
+document.getElementById('projectionModal').addEventListener('click',e=>{ if(e.target===document.getElementById('projectionModal')) document.getElementById('projectionModal').classList.remove('open'); });
 
 // ── DÉMARRAGE ─────────────────────────────────────────────
 loadBoutiquesConfig();
