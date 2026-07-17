@@ -494,6 +494,12 @@ let editIdx = null, activeFilter = '';
 // ═══════════════════════════════════════════════════════════
 function monthKey(date){ const d=new Date(date); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
 function fmtMonth(key){ const [y,m]=key.split('-'); return ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'][parseInt(m)-1]+' '+y; }
+// Clé fiable : les boutiques dont les articles n'ont pas de référence ne doivent pas regrouper leurs ventes.
+function productStatsKey(ref,nom,prix){
+  const r=String(ref||'').trim();
+  if(r) return 'REF:'+r;
+  return 'NOM:'+String(nom||'').trim().toLowerCase()+'|PRIX:'+Number(prix||0).toFixed(2);
+}
 function sortProds(arr){ return arr.sort((a,b)=>a.nom.localeCompare(b.nom,'fr')); }
 function getLoyer(mk){ const b=BOUTIQUES[currentBoutique]; return calcResultForBoutique(0,mk,b).loyer; }
 
@@ -821,21 +827,24 @@ function renderStats(){
   salesHistory.forEach(s=>{
     if(!byMonth[s.month]) byMonth[s.month]={qty:0,amount:0,prods:{},manual:0};
     byMonth[s.month].qty+=s.qty; byMonth[s.month].amount+=s.amount;
-    if(!byMonth[s.month].prods[s.ref]) byMonth[s.month].prods[s.ref]={nom:s.nom,qty:0,amount:0};
-    byMonth[s.month].prods[s.ref].qty+=s.qty; byMonth[s.month].prods[s.ref].amount+=s.amount;
+    const pKey=productStatsKey(s.ref,s.nom,(Number(s.amount)||0)/(Number(s.qty)||1));
+    if(!byMonth[s.month].prods[pKey]) byMonth[s.month].prods[pKey]={nom:s.nom||s.ref||'Article',qty:0,amount:0};
+    byMonth[s.month].prods[pKey].qty+=Number(s.qty)||0; byMonth[s.month].prods[pKey].amount+=Number(s.amount)||0;
   });
 
   // 2. Ventes issues de sold sur les produits mais absentes de salesHistory
   // (saisie manuelle, import JSON, etc.)
   const soldInHistory = {};
   salesHistory.forEach(s=>{
-    if(!soldInHistory[s.ref]) soldInHistory[s.ref]=0;
-    soldInHistory[s.ref]+=s.qty;
+    const pKey=productStatsKey(s.ref,s.nom,(Number(s.amount)||0)/(Number(s.qty)||1));
+    if(!soldInHistory[pKey]) soldInHistory[pKey]=0;
+    soldInHistory[pKey]+=Number(s.qty)||0;
   });
   const now = new Date();
   const curKey = monthKey(now);
   products.forEach(p=>{
-    const soldTracked = soldInHistory[p.ref]||0;
+    const pKey = productStatsKey(p.ref,p.nom,p.prix);
+    const soldTracked = soldInHistory[pKey]||0;
     const soldTotal   = p.sold||0;
     const manquant    = soldTotal - soldTracked;
     if(manquant > 0 && p.prix > 0){
@@ -843,9 +852,9 @@ function renderStats(){
       if(!byMonth[curKey]) byMonth[curKey]={qty:0,amount:0,prods:{},manual:0};
       byMonth[curKey].qty    += manquant;
       byMonth[curKey].amount += manquant * p.prix;
-      if(!byMonth[curKey].prods[p.ref]) byMonth[curKey].prods[p.ref]={nom:p.nom,qty:0,amount:0};
-      byMonth[curKey].prods[p.ref].qty    += manquant;
-      byMonth[curKey].prods[p.ref].amount += manquant * p.prix;
+      if(!byMonth[curKey].prods[pKey]) byMonth[curKey].prods[pKey]={nom:p.nom||p.ref||'Article',qty:0,amount:0};
+      byMonth[curKey].prods[pKey].qty    += manquant;
+      byMonth[curKey].prods[pKey].amount += manquant * p.prix;
     }
   });
 
@@ -1405,7 +1414,10 @@ function importExcel(event){
           prix=typeof pv==='number'?pv:parseFloat(String(pv).replace(/[€\s]/g,'').replace(',','.'))||0;
         }
         if(!ref&&!nom) continue;
-        const existing=products.find(p=>p.ref===ref);
+        const existing=products.find(p=>{
+          if(ref) return String(p.ref||'').trim()===ref;
+          return !String(p.ref||'').trim() && String(p.nom||'').trim().toLowerCase()===nom.toLowerCase() && Number(p.prix||0).toFixed(2)===Number(prix||0).toFixed(2);
+        });
         if(existing){ if(nom) existing.nom=nom; if(prix>0) existing.prix=prix; updated++; }
         else{ products.push({ref,nom,prix,qty:0,sold:0}); added++; }
       }
@@ -1429,7 +1441,7 @@ function exportXLSX(){
   ws1['!cols']=[{wch:16},{wch:28},{wch:8},{wch:8},{wch:13},{wch:12},{wch:12}];
   XLSX.utils.book_append_sheet(wb,ws1,'Stocks');
   const byMonth={};
-  salesHistory.forEach(s=>{ if(!byMonth[s.month]) byMonth[s.month]={produits:0,forfait:0,prods:{}}; byMonth[s.month].produits+=s.amount; if(!byMonth[s.month].prods[s.ref]) byMonth[s.month].prods[s.ref]={nom:s.nom,qty:0,amount:0}; byMonth[s.month].prods[s.ref].qty+=s.qty; byMonth[s.month].prods[s.ref].amount+=s.amount; });
+  salesHistory.forEach(s=>{ const pKey=productStatsKey(s.ref,s.nom,(Number(s.amount)||0)/(Number(s.qty)||1)); if(!byMonth[s.month]) byMonth[s.month]={produits:0,forfait:0,prods:{}}; byMonth[s.month].produits+=Number(s.amount)||0; if(!byMonth[s.month].prods[pKey]) byMonth[s.month].prods[pKey]={nom:s.nom||s.ref||'Article',qty:0,amount:0}; byMonth[s.month].prods[pKey].qty+=Number(s.qty)||0; byMonth[s.month].prods[pKey].amount+=Number(s.amount)||0; });
   Object.keys(manualCA).forEach(m=>{ if(!byMonth[m]) byMonth[m]={produits:0,forfait:0,prods:{}}; byMonth[m].forfait=manualCA[m]; });
   const ms=Object.keys(byMonth).sort();
   const dataCA=[['Mois','CA produits','CA forfaitaire','CA total','Produit star','Qté star'],
