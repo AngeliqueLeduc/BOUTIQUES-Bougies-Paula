@@ -206,6 +206,16 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .enterprise-btn{width:100%;padding:12px;border:none;border-radius:var(--radius-sm);background:var(--rose-fuchsia);color:#fff;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer}
 .proj-note{font-size:11px;color:var(--text3);font-style:italic;line-height:1.4;margin-top:8px}
 
+.modal select{width:100%;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:13px 14px;font-size:15px;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;}
+.manager-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:13px;margin-bottom:9px;}
+.manager-head{display:flex;justify-content:space-between;align-items:center;gap:10px;}
+.manager-name{font-size:15px;font-weight:600;}
+.manager-meta{font-size:11px;color:var(--text3);margin-top:4px;line-height:1.45;}
+.manager-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+.manager-btn{flex:1;min-width:84px;padding:9px 8px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg);color:var(--text2);font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer;}
+.manager-btn.danger{color:var(--red);background:var(--red-bg);border-color:rgba(176,32,32,.2);}
+.add-boutique-wide{width:100%;padding:13px;border-radius:var(--radius-sm);border:1.5px dashed var(--rose-framboise);background:var(--rose-pale);color:var(--rose-framboise);font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;margin-bottom:12px;}
+
 </style>
 </head>
 <body>
@@ -218,6 +228,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div class="header-actions">
       <button class="hbtn" onclick="openProjection()">📈 Projection</button>
       <button class="hbtn" id="btn-params" onclick="openParamsBoutique()">⚙️ Params</button>
+      <button class="hbtn" onclick="openBoutiqueManager()">🏪 Boutiques</button>
       <button class="hbtn" onclick="exportXLSX()">↓ Excel</button>
       <button class="hbtn" onclick="exportDonnees()">💾</button>
       <button class="hbtn" onclick="document.getElementById('importDonneesInput').click()">♻️</button>
@@ -321,6 +332,25 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   </div>
 </div>
 
+<!-- Modal correction d’une vente depuis l’onglet Stats -->
+<div class="modal-bg" id="editStatSaleModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>Modifier les articles vendus</h2>
+    <div id="ess-product-label" style="font-size:13px;color:var(--text3);margin-bottom:8px"></div>
+    <input type="hidden" id="ess-month">
+    <input type="hidden" id="ess-identity">
+    <label>Mois</label><input type="month" id="ess-month-display" disabled>
+    <label>Quantité vendue</label><input type="number" id="ess-qty" min="0" step="1" inputmode="numeric">
+    <label>Prix unitaire réellement vendu (€)</label><input type="number" id="ess-price" min="0" step="0.01" inputmode="decimal">
+    <div style="font-size:11px;color:var(--text3);margin-top:6px;font-style:italic">La correction met à jour le CA du mois, le cumul annuel et le CA total. Une quantité à 0 supprime cette vente du mois.</div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="document.getElementById('editStatSaleModal').classList.remove('open')">Annuler</button>
+      <button class="btn-save" onclick="saveStatSaleEdit()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal paramètres boutique -->
 <div class="modal-bg" id="paramsBoutiqueModal">
   <div class="modal">
@@ -334,8 +364,24 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <input type="number" id="p-commission" step="0.1" min="0" max="100" inputmode="decimal">
     <label>Loyer standard (€/mois)</label>
     <input type="number" id="p-loyer" step="0.01" min="0" inputmode="decimal">
+    <label>Type de point de vente</label>
+    <select id="p-type" onchange="toggleParamTypeFields()">
+      <option value="boutique">🏪 Boutique</option>
+      <option value="fleuriste">🌸 Fleuriste</option>
+      <option value="marche">🛍️ Marché</option>
+      <option value="site">🌐 Site Internet</option>
+      <option value="evenement">🎪 Événement / Salon</option>
+    </select>
     <label>Date d'ouverture (si boutique récente)</label>
     <input type="date" id="p-ouverture">
+    <div id="p-temporary-fields">
+      <label>Date de fin (marché ou événement temporaire)</label>
+      <input type="date" id="p-date-fin">
+      <label>Jour habituel du marché</label>
+      <select id="p-jour-marche">
+        <option value="">Non défini</option><option value="1">Lundi</option><option value="2">Mardi</option><option value="3">Mercredi</option><option value="4">Jeudi</option><option value="5">Vendredi</option><option value="6">Samedi</option><option value="0">Dimanche</option>
+      </select>
+    </div>
     <label>Loyer du 1er mois (€) — si mois incomplet</label>
     <input type="number" id="p-loyer-premier" step="0.01" min="0" inputmode="decimal" placeholder="Laisser vide si mois complet">
     <div style="font-size:11px;color:var(--text3);margin-top:6px;font-style:italic">
@@ -373,19 +419,51 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 <div class="modal-bg" id="newBoutiqueModal">
   <div class="modal">
     <div class="modal-handle"></div>
-    <h2>Nouvelle boutique</h2>
-    <label>Nom de la boutique</label>
-    <input type="text" id="nb-nom" placeholder="Ex: Ma boutique" autocomplete="off">
-    <label>Emoji (optionnel)</label>
-    <input type="text" id="nb-emoji" placeholder="🏪" maxlength="2">
+    <h2 id="new-boutique-title">Nouvelle boutique</h2>
+    <input type="hidden" id="nb-duplicate-source">
+    <label>Nom du point de vente</label>
+    <input type="text" id="nb-nom" placeholder="Ex : Fleuriste Quimper" autocomplete="off">
+    <label>Type</label>
+    <select id="nb-type" onchange="applyBoutiqueTypeDefaults();toggleNewTypeFields()">
+      <option value="boutique">🏪 Boutique</option>
+      <option value="fleuriste">🌸 Fleuriste</option>
+      <option value="marche">🛍️ Marché</option>
+      <option value="site">🌐 Site Internet</option>
+      <option value="evenement">🎪 Événement / Salon</option>
+    </select>
+    <label>Emoji</label>
+    <input type="text" id="nb-emoji" placeholder="🏪" maxlength="3">
     <label>Commission (%)</label>
-    <input type="number" id="nb-commission" placeholder="20" min="0" max="100" inputmode="decimal">
+    <input type="number" id="nb-commission" placeholder="20" min="0" max="100" step="0.1" inputmode="decimal">
     <label>Loyer mensuel (€)</label>
-    <input type="number" id="nb-loyer" placeholder="81" min="0" inputmode="decimal">
+    <input type="number" id="nb-loyer" placeholder="0" min="0" step="0.01" inputmode="decimal">
+    <label>Date d'ouverture</label>
+    <input type="date" id="nb-ouverture">
+    <div id="nb-temporary-fields">
+      <label>Date de fin</label>
+      <input type="date" id="nb-date-fin">
+      <label>Jour habituel du marché</label>
+      <select id="nb-jour-marche">
+        <option value="">Non défini</option><option value="1">Lundi</option><option value="2">Mardi</option><option value="3">Mercredi</option><option value="4">Jeudi</option><option value="5">Vendredi</option><option value="6">Samedi</option><option value="0">Dimanche</option>
+      </select>
+    </div>
+    <label>Loyer du premier mois (€)</label>
+    <input type="number" id="nb-loyer-premier" min="0" step="0.01" inputmode="decimal" placeholder="Facultatif">
     <div class="modal-footer">
       <button class="btn-cancel" onclick="document.getElementById('newBoutiqueModal').classList.remove('open')">Annuler</button>
       <button class="btn-save" onclick="saveNewBoutique()">Créer</button>
     </div>
+  </div>
+</div>
+
+<!-- Gestion des boutiques -->
+<div class="modal-bg" id="boutiqueManagerModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>🏪 Gestion des boutiques</h2>
+    <button class="add-boutique-wide" onclick="openNewBoutique()">＋ Ajouter une boutique</button>
+    <div id="boutiqueManagerList"></div>
+    <div class="modal-footer"><button class="btn-save" onclick="document.getElementById('boutiqueManagerModal').classList.remove('open')">Fermer</button></div>
   </div>
 </div>
 
@@ -597,7 +675,7 @@ function renderBoutiqueBar(){
     `<button class="b-btn${i===currentBoutique?' active':''}" onclick="switchBoutique(${i})">${b.emoji} ${b.nom.split('—')[0].split(' ')[0]}</button>`
   ).join('')
   + `<button class="b-btn${currentBoutique>=BOUTIQUES.length?' active':''}" onclick="switchBoutique(${BOUTIQUES.length})">🏢 Entreprise</button>`
-  + `<button class="b-btn" onclick="openNewBoutique()" style="background:rgba(255,255,255,0.04);border-style:dashed">＋</button>`;
+   + `<button class="b-btn" onclick="openNewBoutique()" style="background:rgba(255,255,255,0.08);border-style:dashed;font-weight:600">＋ Boutique</button>`;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -630,79 +708,82 @@ function switchBoutique(idx){
 // ═══════════════════════════════════════════════════════════
 // STATS
 // ═══════════════════════════════════════════════════════════
+function saleIdentityKey(ref,nom){
+  const r=String(ref||'').trim();
+  if(r) return 'REF:'+r;
+  return 'NOM:'+String(nom||'').trim().toLowerCase();
+}
+
+function computeStoreCATotals(prods, sh, mc){
+  prods=prods||[]; sh=sh||[]; mc=mc||{};
+  const byMonth={};
+  let total=0;
+  const tracked={};
+  sh.forEach(v=>{
+    const amount=Number(v.amount)||0, qty=Number(v.qty)||0;
+    total+=amount;
+    if(!byMonth[v.month]) byMonth[v.month]=0;
+    byMonth[v.month]+=amount;
+    const k=saleIdentityKey(v.ref,v.nom);
+    tracked[k]=(tracked[k]||0)+qty;
+  });
+  const curKey=monthKey(new Date());
+  prods.forEach(p=>{
+    const missing=(Number(p.sold)||0)-(tracked[saleIdentityKey(p.ref,p.nom)]||0);
+    if(missing>0){
+      const amount=missing*(Number(p.prix)||0);
+      total+=amount;
+      byMonth[curKey]=(byMonth[curKey]||0)+amount;
+    }
+  });
+  Object.keys(mc).forEach(m=>{
+    const amount=Number(mc[m])||0;
+    total+=amount;
+    byMonth[m]=(byMonth[m]||0)+amount;
+  });
+  return {total,byMonth};
+}
+
 function updateStats(){
-  // Statistiques de la boutique actuellement sélectionnée uniquement
-  const valStock = products.reduce((s,p)=>s+(Number(p.qty)||0)*(Number(p.prix)||0),0);
+  const valStock = products.reduce((sum,p)=>sum+(Number(p.qty)||0)*(Number(p.prix)||0),0);
   document.getElementById('s-valeur').textContent = valStock.toFixed(2)+' €';
 
-  const totalSold = products.reduce((s,p)=>s+(Number(p.sold)||0),0);
-  const caProduits = products.reduce((s,p)=>s+(Number(p.sold)||0)*(Number(p.prix)||0),0);
-  const caForfeits = Object.values(manualCA).reduce((s,v)=>s+(Number(v)||0),0);
-  const caTotal = caProduits + caForfeits;
+  const totalSold = products.reduce((sum,p)=>sum+(Number(p.sold)||0),0);
+  const totals=computeStoreCATotals(products,salesHistory,manualCA);
 
   document.getElementById('s-vendu-nb').textContent = totalSold;
-  document.getElementById('s-ca').textContent = caTotal.toFixed(2)+' €';
-
-  const qtyTotal = products.reduce((s,p)=>s+(Number(p.qty)||0),0);
-  document.getElementById('s-qty-total').textContent = qtyTotal;
+  document.getElementById('s-ca').textContent = totals.total.toFixed(2)+' €';
+  document.getElementById('s-qty-total').textContent = products.reduce((sum,p)=>sum+(Number(p.qty)||0),0);
 
   const now=new Date();
   const curKey=monthKey(now);
   const prevKey=monthKey(new Date(now.getFullYear(),now.getMonth()-1,1));
-  let caMois=0, caPrev=0;
-
-  salesHistory.forEach(s=>{
-    if(s.month===curKey) caMois += Number(s.amount)||0;
-    if(s.month===prevKey) caPrev += Number(s.amount)||0;
-  });
-  caMois += Number(manualCA[curKey]||0);
-  caPrev += Number(manualCA[prevKey]||0);
-
-  document.getElementById('s-ca-mois').textContent = caMois.toFixed(2)+' €';
-  document.getElementById('s-ca-prev').textContent = caPrev.toFixed(2)+' €';
+  document.getElementById('s-ca-mois').textContent = Number(totals.byMonth[curKey]||0).toFixed(2)+' €';
+  document.getElementById('s-ca-prev').textContent = Number(totals.byMonth[prevKey]||0).toFixed(2)+' €';
   document.getElementById('s-ca-mois-lbl').textContent = 'CA '+fmtMonth(curKey);
   document.getElementById('s-ca-prev-lbl').textContent = fmtMonth(prevKey);
 }
 
 function updateGlobalStats(){
-  // Statistiques cumulées de toutes les boutiques, utilisées uniquement dans l'onglet global 📊
-  let totalSold=0;
-  let totalCA=0;
-  let totalStockValue=0;
-  let totalQty=0;
-
+  let totalSold=0,totalCA=0,totalStockValue=0,totalQty=0;
   const now=new Date();
   const curKey=monthKey(now);
   const prevKey=monthKey(new Date(now.getFullYear(),now.getMonth()-1,1));
-
-  let caMois=0;
-  let caPrev=0;
+  let caMois=0,caPrev=0;
 
   BOUTIQUES.forEach(b=>{
     try{
       const raw=localStorage.getItem(b.storageKey);
       if(!raw) return;
-
       const data=JSON.parse(raw);
-      const prods=data.stocks||[];
-      const sh=data.salesHistory||[];
-      const mc=data.manualCA||{};
-
-      totalSold += prods.reduce((s,p)=>s+(Number(p.sold)||0),0);
-      totalStockValue += prods.reduce((s,p)=>s+((Number(p.qty)||0)*(Number(p.prix)||0)),0);
-      totalQty += prods.reduce((s,p)=>s+(Number(p.qty)||0),0);
-
-      totalCA += prods.reduce((s,p)=>s+((Number(p.sold)||0)*(Number(p.prix)||0)),0);
-      totalCA += Object.values(mc).reduce((s,v)=>s+(Number(v)||0),0);
-
-      sh.forEach(v=>{
-        if(v.month===curKey) caMois += Number(v.amount)||0;
-        if(v.month===prevKey) caPrev += Number(v.amount)||0;
-      });
-
-      caMois += Number(mc[curKey]||0);
-      caPrev += Number(mc[prevKey]||0);
-
+      const prods=data.stocks||[], sh=data.salesHistory||[], mc=data.manualCA||{};
+      totalSold += prods.reduce((sum,p)=>sum+(Number(p.sold)||0),0);
+      totalStockValue += prods.reduce((sum,p)=>sum+(Number(p.qty)||0)*(Number(p.prix)||0),0);
+      totalQty += prods.reduce((sum,p)=>sum+(Number(p.qty)||0),0);
+      const totals=computeStoreCATotals(prods,sh,mc);
+      totalCA += totals.total;
+      caMois += Number(totals.byMonth[curKey]||0);
+      caPrev += Number(totals.byMonth[prevKey]||0);
     }catch(e){}
   });
 
@@ -710,7 +791,6 @@ function updateGlobalStats(){
   document.getElementById('s-ca').textContent = totalCA.toFixed(2)+' €';
   document.getElementById('s-valeur').textContent = totalStockValue.toFixed(2)+' €';
   document.getElementById('s-qty-total').textContent = totalQty;
-
   document.getElementById('s-ca-mois').textContent = caMois.toFixed(2)+' €';
   document.getElementById('s-ca-prev').textContent = caPrev.toFixed(2)+' €';
   document.getElementById('s-ca-mois-lbl').textContent = 'CA global '+fmtMonth(curKey);
@@ -856,8 +936,8 @@ function renderStats(){
   salesHistory.forEach(s=>{
     if(!byMonth[s.month]) byMonth[s.month]={qty:0,amount:0,prods:{},manual:0};
     byMonth[s.month].qty+=s.qty; byMonth[s.month].amount+=s.amount;
-    const pKey=productStatsKey(s.ref,s.nom,(Number(s.amount)||0)/(Number(s.qty)||1));
-    if(!byMonth[s.month].prods[pKey]) byMonth[s.month].prods[pKey]={nom:s.nom||s.ref||'Article',qty:0,amount:0};
+    const pKey=saleIdentityKey(s.ref,s.nom);
+    if(!byMonth[s.month].prods[pKey]) byMonth[s.month].prods[pKey]={identity:pKey,ref:s.ref||'',nom:s.nom||s.ref||'Article',qty:0,amount:0};
     byMonth[s.month].prods[pKey].qty+=Number(s.qty)||0; byMonth[s.month].prods[pKey].amount+=Number(s.amount)||0;
   });
 
@@ -865,14 +945,14 @@ function renderStats(){
   // (saisie manuelle, import JSON, etc.)
   const soldInHistory = {};
   salesHistory.forEach(s=>{
-    const pKey=productStatsKey(s.ref,s.nom,(Number(s.amount)||0)/(Number(s.qty)||1));
+    const pKey=saleIdentityKey(s.ref,s.nom);
     if(!soldInHistory[pKey]) soldInHistory[pKey]=0;
     soldInHistory[pKey]+=Number(s.qty)||0;
   });
   const now = new Date();
   const curKey = monthKey(now);
   products.forEach(p=>{
-    const pKey = productStatsKey(p.ref,p.nom,p.prix);
+    const pKey = saleIdentityKey(p.ref,p.nom);
     const soldTracked = soldInHistory[pKey]||0;
     const soldTotal   = p.sold||0;
     const manquant    = soldTotal - soldTracked;
@@ -881,7 +961,7 @@ function renderStats(){
       if(!byMonth[curKey]) byMonth[curKey]={qty:0,amount:0,prods:{},manual:0};
       byMonth[curKey].qty    += manquant;
       byMonth[curKey].amount += manquant * p.prix;
-      if(!byMonth[curKey].prods[pKey]) byMonth[curKey].prods[pKey]={nom:p.nom||p.ref||'Article',qty:0,amount:0};
+      if(!byMonth[curKey].prods[pKey]) byMonth[curKey].prods[pKey]={identity:pKey,ref:p.ref||'',nom:p.nom||p.ref||'Article',qty:0,amount:0};
       byMonth[curKey].prods[pKey].qty    += manquant;
       byMonth[curKey].prods[pKey].amount += manquant * p.prix;
     }
@@ -908,10 +988,61 @@ function renderStats(){
       <div class="month-bar-bg"><div class="month-bar" style="width:${barW}%"></div></div>
       <div class="month-sub">${d.qty} article${d.qty>1?'s':''} vendu${d.qty>1?'s':''}</div>
       ${starLine}
-      ${top.map(p=>`<div class="month-prod"><span class="month-prod-nom">${p.nom}</span><span class="month-prod-val">${p.qty} × ${(p.amount/p.qty).toFixed(0)} € = ${p.amount.toFixed(2)} €</span></div>`).join('')}
+      ${top.map(p=>`<div class="month-prod"><span class="month-prod-nom">${p.nom}</span><span class="month-prod-val">${p.qty} × ${(p.amount/Math.max(1,p.qty)).toFixed(2)} € = ${p.amount.toFixed(2)} € <button onclick="openStatSaleEditor('${m}','${encodeURIComponent(p.identity)}')" style="margin-left:7px;border:0;background:transparent;color:var(--rose-framboise);cursor:pointer;font-size:13px" title="Modifier cette vente">✏️</button></span></div>`).join('')}
       ${manuelLine}
     </div>`;
   }).join('');
+}
+
+function openStatSaleEditor(month, encodedIdentity){
+  const identity=decodeURIComponent(encodedIdentity);
+  const entries=salesHistory.filter(v=>v.month===month && saleIdentityKey(v.ref,v.nom)===identity);
+  let qty=entries.reduce((sum,v)=>sum+(Number(v.qty)||0),0);
+  let amount=entries.reduce((sum,v)=>sum+(Number(v.amount)||0),0);
+  let ref=entries[0]?.ref||'', nom=entries[0]?.nom||'';
+  if(!entries.length){
+    const p=products.find(x=>saleIdentityKey(x.ref,x.nom)===identity);
+    if(p){ ref=p.ref||''; nom=p.nom||p.ref||'Article'; qty=Number(p.sold)||0; amount=qty*(Number(p.prix)||0); }
+  }
+  document.getElementById('ess-month').value=month;
+  document.getElementById('ess-month-display').value=month;
+  document.getElementById('ess-identity').value=identity;
+  document.getElementById('ess-product-label').textContent=nom||ref||'Article';
+  document.getElementById('ess-qty').value=qty;
+  document.getElementById('ess-price').value=qty? (amount/qty).toFixed(2) : '';
+  document.getElementById('editStatSaleModal').classList.add('open');
+}
+
+function saveStatSaleEdit(){
+  const month=document.getElementById('ess-month').value;
+  const identity=document.getElementById('ess-identity').value;
+  const qty=Math.max(0,Math.floor(Number(document.getElementById('ess-qty').value)||0));
+  const price=Number(document.getElementById('ess-price').value)||0;
+  if(!month || price<0){ showToast('⚠️ Valeurs invalides'); return; }
+
+  const existing=salesHistory.filter(v=>v.month===month && saleIdentityKey(v.ref,v.nom)===identity);
+  const oldQty=existing.reduce((sum,v)=>sum+(Number(v.qty)||0),0);
+  const sample=existing[0];
+  const prod=products.find(p=>saleIdentityKey(p.ref,p.nom)===identity);
+  const ref=sample?.ref||prod?.ref||'';
+  const nom=sample?.nom||prod?.nom||ref||'Article';
+
+  salesHistory=salesHistory.filter(v=>!(v.month===month && saleIdentityKey(v.ref,v.nom)===identity));
+  if(qty>0){
+    const date=(sample&&sample.date)||new Date(month+'-01T12:00:00').toISOString();
+    salesHistory.push({month,ref,nom,qty,amount:qty*price,date});
+  }
+
+  if(prod){
+    const delta=qty-oldQty;
+    prod.sold=Math.max(0,(Number(prod.sold)||0)+delta);
+    prod.qty=Math.max(0,(Number(prod.qty)||0)-delta);
+  }
+
+  saveData();
+  document.getElementById('editStatSaleModal').classList.remove('open');
+  renderStats(); updateStats();
+  showToast('✓ Vente et chiffre d’affaires corrigés');
 }
 
 function openManualCA(){ const now=new Date(); document.getElementById('mca-month').value=monthKey(now); document.getElementById('mca-amount').value=manualCA[monthKey(now)]||''; document.getElementById('manualCAModal').classList.add('open'); }
@@ -1324,11 +1455,11 @@ function getBoutiqueMonthCA(idx,mk){
   }catch(e){}
   return ca;
 }
-function isKerityBoutique(b){ return /kerity|kérity/i.test((b&&b.nom)||''); }
-function isSiteBoutique(b){ return /site|internet|web/i.test((b&&b.nom)||''); }
-function countWednesdays(start,end){
+function isKerityBoutique(b){ return !!b && (b.type==='marche' || /kerity|kérity/i.test(b.nom||'')); }
+function isSiteBoutique(b){ return !!b && (b.type==='site' || /site|internet|web/i.test(b.nom||'')); }
+function countMarketDays(start,end,weekday){
   let n=0,d=new Date(start.getFullYear(),start.getMonth(),start.getDate()),last=new Date(end.getFullYear(),end.getMonth(),end.getDate());
-  while(d<=last){ if(d.getDay()===3) n++; d.setDate(d.getDate()+1); } return n;
+  while(d<=last){ if(d.getDay()===weekday) n++; d.setDate(d.getDate()+1); } return n;
 }
 function projectionForBoutique(idx,date,caToDate,excludeSundays){
   const b=BOUTIQUES[idx], first=new Date(date.getFullYear(),date.getMonth(),1), last=new Date(date.getFullYear(),date.getMonth()+1,0), mk=monthKey(date);
@@ -1337,12 +1468,17 @@ function projectionForBoutique(idx,date,caToDate,excludeSundays){
     return {mode:'site',elapsed:0,total:0,remaining:0,avg:0,projectedCA:caToDate,r,note:'Les ventes du site étant irrégulières, aucun rythme quotidien automatique n’est appliqué. Le CA saisi est conservé comme estimation prudente.'};
   }
   if(isKerityBoutique(b)){
-    const augustEnd=new Date(date.getFullYear(),7,31);
-    const effectiveLast=last<augustEnd?last:augustEnd;
-    const elapsed=countWednesdays(first,date>effectiveLast?effectiveLast:date);
-    const total=date.getMonth()>7?0:countWednesdays(first,effectiveLast);
+    const weekday=(b.jourMarche===0||b.jourMarche)?Number(b.jourMarche):3;
+    const defaultEnd=new Date(date.getFullYear(),7,31);
+    const configuredEnd=b.dateFin?projectionDateToLocal(b.dateFin):defaultEnd;
+    const effectiveLast=last<configuredEnd?last:configuredEnd;
+    const cappedDate=date>effectiveLast?effectiveLast:date;
+    const elapsed=cappedDate<first?0:countMarketDays(first,cappedDate,weekday);
+    const total=effectiveLast<first?0:countMarketDays(first,effectiveLast,weekday);
     const remaining=Math.max(0,total-elapsed),avg=elapsed?caToDate/elapsed:0,projectedCA=avg*total;
-    return {mode:'kerity',elapsed,total,remaining,avg,projectedCA,r:calcResultForBoutique(projectedCA,mk,b),note:'Kerity est projetée uniquement sur les mercredis, jusqu’au 31 août.'};
+    const jours=['dimanches','lundis','mardis','mercredis','jeudis','vendredis','samedis'];
+    const finTxt=configuredEnd.toLocaleDateString('fr-FR');
+    return {mode:'kerity',elapsed,total,remaining,avg,projectedCA,r:calcResultForBoutique(projectedCA,mk,b),note:`Marché projeté uniquement sur les ${jours[weekday]}, jusqu’au ${finTxt}.`};
   }
   const elapsed=countProjectionDays(first,date,excludeSundays),total=countProjectionDays(first,last,excludeSundays),remaining=Math.max(0,total-elapsed),avg=elapsed?caToDate/elapsed:0,projectedCA=avg*total;
   return {mode:'standard',elapsed,total,remaining,avg,projectedCA,r:calcResultForBoutique(projectedCA,mk,b),note:'Projection calculée à partir de la moyenne réalisée depuis le début du mois.'};
@@ -1494,7 +1630,7 @@ function exportXLSX(){
   ws1['!cols']=[{wch:16},{wch:28},{wch:8},{wch:8},{wch:13},{wch:12},{wch:12}];
   XLSX.utils.book_append_sheet(wb,ws1,'Stocks');
   const byMonth={};
-  salesHistory.forEach(s=>{ const pKey=productStatsKey(s.ref,s.nom,(Number(s.amount)||0)/(Number(s.qty)||1)); if(!byMonth[s.month]) byMonth[s.month]={produits:0,forfait:0,prods:{}}; byMonth[s.month].produits+=Number(s.amount)||0; if(!byMonth[s.month].prods[pKey]) byMonth[s.month].prods[pKey]={nom:s.nom||s.ref||'Article',qty:0,amount:0}; byMonth[s.month].prods[pKey].qty+=Number(s.qty)||0; byMonth[s.month].prods[pKey].amount+=Number(s.amount)||0; });
+  salesHistory.forEach(s=>{ const pKey=saleIdentityKey(s.ref,s.nom); if(!byMonth[s.month]) byMonth[s.month]={produits:0,forfait:0,prods:{}}; byMonth[s.month].produits+=Number(s.amount)||0; if(!byMonth[s.month].prods[pKey]) byMonth[s.month].prods[pKey]={nom:s.nom||s.ref||'Article',qty:0,amount:0}; byMonth[s.month].prods[pKey].qty+=Number(s.qty)||0; byMonth[s.month].prods[pKey].amount+=Number(s.amount)||0; });
   Object.keys(manualCA).forEach(m=>{ if(!byMonth[m]) byMonth[m]={produits:0,forfait:0,prods:{}}; byMonth[m].forfait=manualCA[m]; });
   const ms=Object.keys(byMonth).sort();
   const dataCA=[['Mois','CA produits','CA forfaitaire','CA total','Produit star','Qté star'],
@@ -1565,6 +1701,7 @@ function importDonnees(event){
 function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
 
 document.getElementById('editModal').addEventListener('click',e=>{ if(e.target===document.getElementById('editModal')) closeModal(); });
+document.getElementById('editStatSaleModal').addEventListener('click',e=>{ if(e.target===document.getElementById('editStatSaleModal')) document.getElementById('editStatSaleModal').classList.remove('open'); });
 document.getElementById('manualCAModal').addEventListener('click',e=>{ if(e.target===document.getElementById('manualCAModal')) document.getElementById('manualCAModal').classList.remove('open'); });
 
 // ═══════════════════════════════════════════════════════════
@@ -1578,7 +1715,11 @@ function openParamsBoutique(){
   document.getElementById('p-emoji').value          = b.emoji;
   document.getElementById('p-commission').value     = (b.commission * 100).toFixed(1);
   document.getElementById('p-loyer').value          = b.loyer;
+  document.getElementById('p-type').value           = b.type || (isSiteBoutique(b)?'site':isKerityBoutique(b)?'marche':'boutique');
   document.getElementById('p-ouverture').value      = b.ouverture || '';
+  document.getElementById('p-date-fin').value        = b.dateFin || '';
+  document.getElementById('p-jour-marche').value     = b.jourMarche === 0 || b.jourMarche ? String(b.jourMarche) : '';
+  toggleParamTypeFields();
   document.getElementById('p-loyer-premier').value  = b.loyerPremierMois !== null && b.loyerPremierMois !== undefined ? b.loyerPremierMois : '';
   document.getElementById('paramsBoutiqueModal').classList.add('open');
 }
@@ -1592,7 +1733,11 @@ function saveParamsBoutique(){
   const commission   = commissionVal === '' ? b.commission*100 : parseFloat(commissionVal);
   const loyerVal      = document.getElementById('p-loyer').value;
   const loyer        = loyerVal === '' ? b.loyer : parseFloat(loyerVal);
+  const type          = document.getElementById('p-type').value || 'boutique';
   const ouverture    = document.getElementById('p-ouverture').value || null;
+  const dateFin       = document.getElementById('p-date-fin').value || null;
+  const jourVal       = document.getElementById('p-jour-marche').value;
+  const jourMarche    = jourVal === '' ? null : parseInt(jourVal,10);
   const lpVal        = document.getElementById('p-loyer-premier').value;
   const loyerPremierMois = lpVal !== '' ? parseFloat(lpVal) : null;
   if(!nom){ showToast('⚠️ Nom requis'); return; }
@@ -1602,7 +1747,10 @@ function saveParamsBoutique(){
   b.emoji            = emoji;
   b.commission       = commission / 100;
   b.loyer            = loyer;
+  b.type             = type;
   b.ouverture        = ouverture;
+  b.dateFin          = dateFin;
+  b.jourMarche       = jourMarche;
   b.loyerPremierMois = loyerPremierMois;
   saveBoutiquesConfig();
   renderBoutiqueBar();
@@ -1612,33 +1760,105 @@ function saveParamsBoutique(){
 }
 
 document.getElementById('paramsBoutiqueModal').addEventListener('click',e=>{ if(e.target===document.getElementById('paramsBoutiqueModal')) document.getElementById('paramsBoutiqueModal').classList.remove('open'); });
-function openNewBoutique(){
-  ['nb-nom','nb-emoji','nb-commission','nb-loyer'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('nb-emoji').value='🏪';
+function boutiqueTypeLabel(type){
+  return ({boutique:'🏪 Boutique',fleuriste:'🌸 Fleuriste',marche:'🛍️ Marché',site:'🌐 Site Internet',evenement:'🎪 Événement / Salon'})[type] || '🏪 Boutique';
+}
+function applyBoutiqueTypeDefaults(){
+  const type=document.getElementById('nb-type').value;
+  const icons={boutique:'🏪',fleuriste:'🌸',marche:'🛍️',site:'🌐',evenement:'🎪'};
+  const emoji=document.getElementById('nb-emoji');
+  if(!emoji.value || ['🏪','🌸','🛍️','🌐','🎪'].includes(emoji.value)) emoji.value=icons[type]||'🏪';
+  if(type==='site'){ document.getElementById('nb-commission').value='0'; document.getElementById('nb-loyer').value='0'; }
+}
+function toggleNewTypeFields(){
+  const type=document.getElementById('nb-type').value;
+  document.getElementById('nb-temporary-fields').style.display=(type==='marche'||type==='evenement')?'':'none';
+}
+function toggleParamTypeFields(){
+  const type=document.getElementById('p-type').value;
+  document.getElementById('p-temporary-fields').style.display=(type==='marche'||type==='evenement')?'':'none';
+}
+function openNewBoutique(sourceIdx=null){
+  document.getElementById('new-boutique-title').textContent=sourceIdx===null?'Nouvelle boutique':'Dupliquer une boutique';
+  document.getElementById('nb-duplicate-source').value=sourceIdx===null?'':String(sourceIdx);
+  ['nb-nom','nb-emoji','nb-commission','nb-loyer','nb-ouverture','nb-date-fin','nb-jour-marche','nb-loyer-premier'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('nb-type').value='boutique';
+  if(sourceIdx!==null && BOUTIQUES[sourceIdx]){
+    const b=BOUTIQUES[sourceIdx];
+    document.getElementById('nb-nom').value=b.nom+' - copie';
+    document.getElementById('nb-type').value=b.type||'boutique';
+    document.getElementById('nb-emoji').value=b.emoji||'🏪';
+    document.getElementById('nb-commission').value=((Number(b.commission)||0)*100).toFixed(1);
+    document.getElementById('nb-loyer').value=Number(b.loyer)||0;
+    document.getElementById('nb-ouverture').value=b.ouverture||'';
+    document.getElementById('nb-date-fin').value=b.dateFin||'';
+    document.getElementById('nb-jour-marche').value=b.jourMarche===0||b.jourMarche?String(b.jourMarche):'';
+    document.getElementById('nb-loyer-premier').value=b.loyerPremierMois??'';
+  } else applyBoutiqueTypeDefaults();
+  toggleNewTypeFields();
+  document.getElementById('boutiqueManagerModal').classList.remove('open');
   document.getElementById('newBoutiqueModal').classList.add('open');
 }
-
 function saveNewBoutique(){
-  const nom       = document.getElementById('nb-nom').value.trim();
-  const emoji     = document.getElementById('nb-emoji').value.trim() || '🏪';
+  const nom=document.getElementById('nb-nom').value.trim();
+  const type=document.getElementById('nb-type').value||'boutique';
+  const emoji=document.getElementById('nb-emoji').value.trim()||'🏪';
   const commissionVal=document.getElementById('nb-commission').value;
-  const commission= commissionVal === '' ? 20 : parseFloat(commissionVal);
+  const commission=commissionVal===''?0:parseFloat(commissionVal);
   const loyerVal=document.getElementById('nb-loyer').value;
-  const loyer     = loyerVal === '' ? 0 : parseFloat(loyerVal);
+  const loyer=loyerVal===''?0:parseFloat(loyerVal);
+  const ouverture=document.getElementById('nb-ouverture').value||null;
+  const dateFin=document.getElementById('nb-date-fin').value||null;
+  const jourVal=document.getElementById('nb-jour-marche').value;
+  const jourMarche=jourVal===''?null:parseInt(jourVal,10);
+  const lpVal=document.getElementById('nb-loyer-premier').value;
+  const loyerPremierMois=lpVal===''?null:parseFloat(lpVal);
   if(!nom){ showToast('⚠️ Donne un nom à la boutique'); return; }
-  if(isNaN(commission) || commission < 0){ showToast('⚠️ Commission invalide'); return; }
-  if(isNaN(loyer) || loyer < 0){ showToast('⚠️ Loyer invalide'); return; }
-  const id        = 'boutique_' + Date.now();
-  const storageKey= 'boutique_data_' + id;
-  BOUTIQUES.push({ id, nom, emoji, storageKey, loyer, loyerAvril: loyer, commission: commission/100 });
+  if(isNaN(commission)||commission<0||commission>100){ showToast('⚠️ Commission invalide'); return; }
+  if(isNaN(loyer)||loyer<0){ showToast('⚠️ Loyer invalide'); return; }
+  const sourceVal=document.getElementById('nb-duplicate-source').value;
+  const sourceIdx=sourceVal===''?null:parseInt(sourceVal,10);
+  const id='boutique_'+Date.now();
+  const storageKey='boutique_data_'+id;
+  BOUTIQUES.push({id,nom,emoji,type,storageKey,loyer,loyerPremierMois,ouverture,dateFin,jourMarche,commission:commission/100});
+  if(sourceIdx!==null && BOUTIQUES[sourceIdx]){
+    try{
+      const sourceRaw=localStorage.getItem(BOUTIQUES[sourceIdx].storageKey);
+      if(sourceRaw) localStorage.setItem(storageKey,sourceRaw);
+    }catch(e){}
+  }
   saveBoutiquesConfig();
   document.getElementById('newBoutiqueModal').classList.remove('open');
   renderBoutiqueBar();
-  switchBoutique(BOUTIQUES.length - 1);
+  switchBoutique(BOUTIQUES.length-1);
   showToast(`✓ Boutique "${nom}" créée !`);
+}
+function openBoutiqueManager(){
+  renderBoutiqueManager();
+  document.getElementById('boutiqueManagerModal').classList.add('open');
+}
+function renderBoutiqueManager(){
+  const el=document.getElementById('boutiqueManagerList');
+  el.innerHTML=BOUTIQUES.map((b,i)=>`<div class="manager-card"><div class="manager-head"><div><div class="manager-name">${b.emoji||'🏪'} ${b.nom}</div><div class="manager-meta">${boutiqueTypeLabel(b.type||'boutique')} · Commission ${((Number(b.commission)||0)*100).toFixed(1).replace('.0','')} % · Loyer ${(Number(b.loyer)||0).toFixed(2)} €${b.dateFin?' · jusqu’au '+new Date(b.dateFin+'T12:00:00').toLocaleDateString('fr-FR'):''}</div></div></div><div class="manager-actions"><button class="manager-btn" onclick="manageEditBoutique(${i})">Modifier</button><button class="manager-btn" onclick="openNewBoutique(${i})">Dupliquer</button><button class="manager-btn danger" onclick="deleteBoutiqueManaged(${i})">Supprimer</button></div></div>`).join('');
+}
+function manageEditBoutique(idx){
+  document.getElementById('boutiqueManagerModal').classList.remove('open');
+  switchBoutique(idx);
+  openParamsBoutique();
+}
+function deleteBoutiqueManaged(idx){
+  const b=BOUTIQUES[idx]; if(!b) return;
+  if(!confirm(`Supprimer la boutique « ${b.nom} » et toutes ses données ?\n\nCette action est définitive.`)) return;
+  try{ localStorage.removeItem(b.storageKey); }catch(e){}
+  BOUTIQUES.splice(idx,1); saveBoutiquesConfig();
+  if(currentBoutique>=BOUTIQUES.length) currentBoutique=Math.max(0,BOUTIQUES.length-1);
+  renderBoutiqueBar(); renderBoutiqueManager();
+  if(BOUTIQUES.length) switchBoutique(currentBoutique); else { products=[]; history=[]; salesHistory=[]; manualCA={}; renderList(); updateStats(); }
+  showToast('Boutique supprimée');
 }
 
 document.getElementById('newBoutiqueModal').addEventListener('click',e=>{ if(e.target===document.getElementById('newBoutiqueModal')) document.getElementById('newBoutiqueModal').classList.remove('open'); });
+document.getElementById('boutiqueManagerModal').addEventListener('click',e=>{ if(e.target===document.getElementById('boutiqueManagerModal')) document.getElementById('boutiqueManagerModal').classList.remove('open'); });
 document.getElementById('ghistModal').addEventListener('click',e=>{ if(e.target===document.getElementById('ghistModal')) document.getElementById('ghistModal').classList.remove('open'); });
 document.getElementById('objectiveModal').addEventListener('click',e=>{ if(e.target===document.getElementById('objectiveModal')) document.getElementById('objectiveModal').classList.remove('open'); });
 document.getElementById('projectionModal').addEventListener('click',e=>{ if(e.target===document.getElementById('projectionModal')) document.getElementById('projectionModal').classList.remove('open'); });
