@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="Bougies Paula">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>Bougies Paula V8 stable — Entreprise et prévisions</title>
+<title>Bougies Paula V8.1 — Contrôle du CA</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -590,6 +590,24 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   </div>
 </div>
 
+
+<!-- Modal contrôle du chiffre d'affaires -->
+<div class="modal-bg" id="caAuditModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>🔎 Contrôle du chiffre d’affaires</h2>
+    <div style="font-size:12px;color:var(--text3);margin-top:-8px;margin-bottom:12px">
+      Cette fenêtre montre toutes les données réellement utilisées par l’onglet Entreprise.
+    </div>
+    <label>Mois à contrôler</label>
+    <input type="month" id="ca-audit-month" onchange="renderCAAudit()">
+    <div id="caAuditContent" style="margin-top:14px"></div>
+    <div class="modal-footer">
+      <button class="btn-save" onclick="document.getElementById('caAuditModal').classList.remove('open')">Fermer</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -837,6 +855,99 @@ function computeStoreCATotals(prods, sh, mc){
   return {total,byMonth};
 }
 
+
+function getRecordedMonthCA(data,mk){
+  data=data||{};
+  let sales=0;
+  const records=[];
+  (data.salesHistory||[]).forEach((v,index)=>{
+    if(v.month!==mk) return;
+    const amount=Number(v.amount)||0;
+    sales+=amount;
+    records.push({
+      index,
+      ref:String(v.ref||''),
+      nom:String(v.nom||v.ref||'Ancienne vente'),
+      qty:Number(v.qty)||0,
+      amount,
+      date:v.date||''
+    });
+  });
+  const manual=Number((data.manualCA||{})[mk]||0);
+  return {sales,manual,total:sales+manual,records};
+}
+
+function openCAAudit(){
+  document.getElementById('ca-audit-month').value=monthKey(new Date());
+  renderCAAudit();
+  document.getElementById('caAuditModal').classList.add('open');
+}
+
+function renderCAAudit(){
+  const mk=document.getElementById('ca-audit-month').value;
+  const el=document.getElementById('caAuditContent');
+  if(!mk||!el) return;
+  const audit=getRecordedMonthCA({salesHistory,manualCA},mk);
+
+  const recordsHtml=audit.records.length
+    ? audit.records.map(r=>`<div class="dash-row">
+        <span class="dash-lbl">
+          ${r.nom}
+          <div style="font-size:10px;color:var(--text3)">${r.qty} article${r.qty>1?'s':''}${r.date?' · '+new Date(r.date).toLocaleDateString('fr-FR'):''}</div>
+        </span>
+        <span class="dash-val">${r.amount.toFixed(2)} €
+          <button onclick="deleteCAAuditSale(${r.index},'${mk}')" style="border:0;background:transparent;color:var(--red);cursor:pointer;margin-left:6px">🗑️</button>
+        </span>
+      </div>`).join('')
+    : '<div style="font-size:12px;color:var(--text3);padding:8px 0">Aucune ligne de vente détaillée.</div>';
+
+  const manualHtml=audit.manual!==0
+    ? `<div class="dash-row">
+        <span class="dash-lbl">CA forfaitaire / ancienne saisie manuelle</span>
+        <span class="dash-val">${audit.manual.toFixed(2)} €
+          <button onclick="deleteCAAuditManual('${mk}')" style="border:0;background:transparent;color:var(--red);cursor:pointer;margin-left:6px">🗑️</button>
+        </span>
+      </div>`
+    : '<div style="font-size:12px;color:var(--text3);padding:8px 0">Aucun CA forfaitaire enregistré.</div>';
+
+  el.innerHTML=`<div class="dash-card" style="margin:0">
+    <div class="dash-title">${fmtMonth(mk)} — ${BOUTIQUES[currentBoutique]?.nom||'Boutique'}</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:8px">
+      Le total ci-dessous est exactement celui utilisé par l’onglet Entreprise.
+    </div>
+    ${recordsHtml}
+    ${manualHtml}
+    <div class="dash-row" style="border-top:2px solid var(--rose-framboise);margin-top:8px;padding-top:9px">
+      <span class="dash-lbl" style="font-weight:600">CA total enregistré</span>
+      <span class="dash-val ok" style="font-size:17px">${audit.total.toFixed(2)} €</span>
+    </div>
+  </div>`;
+}
+
+function deleteCAAuditSale(index,mk){
+  const sale=salesHistory[index];
+  if(!sale) return;
+  if(!confirm(`Supprimer définitivement la ligne de vente de ${sale.nom||sale.ref||'cet article'} (${Number(sale.amount||0).toFixed(2)} €) ?`)) return;
+  salesHistory.splice(index,1);
+  saveData();
+  updateStats();
+  renderStats();
+  renderCAAudit();
+  showToast('Ligne de vente supprimée');
+}
+
+function deleteCAAuditManual(mk){
+  const amount=Number(manualCA[mk]||0);
+  if(!amount) return;
+  if(!confirm(`Supprimer le CA forfaitaire de ${amount.toFixed(2)} € pour ${fmtMonth(mk)} ?`)) return;
+  delete manualCA[mk];
+  saveData();
+  updateStats();
+  renderStats();
+  renderCAAudit();
+  showToast('CA forfaitaire supprimé');
+}
+
 function updateStats(){
   const valStock = products.reduce((sum,p)=>sum+(Number(p.qty)||0)*(Number(p.prix)||0),0);
   document.getElementById('s-valeur').textContent = valStock.toFixed(2)+' €';
@@ -1067,7 +1178,10 @@ function renderStats(){
   });
 
   const months=Object.keys(byMonth).sort().reverse();
-  const btnAjout=`<div style="padding:0 0 12px"><button onclick="openManualCA()" style="width:100%;padding:13px;border-radius:var(--radius-sm);border:1.5px dashed var(--border);background:transparent;color:var(--text2);font-size:14px;font-family:'DM Sans',sans-serif;cursor:pointer">+ Ajouter un CA forfaitaire</button></div>`;
+  const btnAjout=`<div style="padding:0 0 12px;display:grid;gap:8px">
+    <button onclick="openManualCA()" style="width:100%;padding:13px;border-radius:var(--radius-sm);border:1.5px dashed var(--border);background:transparent;color:var(--text2);font-size:14px;font-family:'DM Sans',sans-serif;cursor:pointer">+ Ajouter un CA forfaitaire</button>
+    <button onclick="openCAAudit()" style="width:100%;padding:13px;border-radius:var(--radius-sm);border:1px solid var(--rose-framboise);background:var(--card);color:var(--rose-framboise);font-size:14px;font-family:'DM Sans',sans-serif;cursor:pointer">🔎 Contrôler l’origine du CA</button>
+  </div>`;
   if(!months.length){ el.innerHTML=btnAjout+`<div class="empty"><div class="empty-icon">📊</div>Aucune vente enregistrée.</div>`; return; }
   const maxCA=Math.max(...months.map(m=>byMonth[m].amount));
   el.innerHTML=btnAjout+months.map(m=>{
@@ -1451,9 +1565,10 @@ function renderDashboard(){
       const prods=data.stocks||[];
       const sh=data.salesHistory||[];
       const mc=data.manualCA||{};
-      let caMois=0,caPrev=0;
-      sh.forEach(s=>{ if(s.month===curKey) caMois+=s.amount; if(s.month===prevKey) caPrev+=s.amount; });
-      caMois+=mc[curKey]||0; caPrev+=mc[prevKey]||0;
+      const currentAudit=getRecordedMonthCA(data,curKey);
+      const previousAudit=getRecordedMonthCA(data,prevKey);
+      const caMois=currentAudit.total;
+      const caPrev=previousAudit.total;
       const valStock=prods.reduce((s,p)=>s+p.qty*p.prix,0);
       const qty=prods.reduce((s,p)=>s+p.qty,0);
       const rMois=calcResultForBoutique(caMois,curKey,b);
@@ -1682,12 +1797,11 @@ function countProjectionDays(start,end,excludeSundays){
 
 function getBoutiqueMonthCA(idx,mk){
   const b=BOUTIQUES[idx]; if(!b) return 0;
-  let ca=0;
   try{
     const raw=localStorage.getItem(b.storageKey);
-    if(raw){ const d=JSON.parse(raw); (d.salesHistory||[]).forEach(v=>{if(v.month===mk) ca+=Number(v.amount)||0;}); ca+=Number((d.manualCA||{})[mk]||0); }
+    if(raw) return getRecordedMonthCA(JSON.parse(raw),mk).total;
   }catch(e){}
-  return ca;
+  return 0;
 }
 function isKerityBoutique(b){ return !!b && (b.type==='marche' || /kerity|kérity/i.test(b.nom||'')); }
 function isSiteBoutique(b){ return !!b && (b.type==='site' || /site|internet|web/i.test(b.nom||'')); }
@@ -2064,6 +2178,7 @@ function showToast(msg){ const t=document.getElementById('toast'); t.textContent
 document.getElementById('editModal').addEventListener('click',e=>{ if(e.target===document.getElementById('editModal')) closeModal(); });
 document.getElementById('editStatSaleModal').addEventListener('click',e=>{ if(e.target===document.getElementById('editStatSaleModal')) document.getElementById('editStatSaleModal').classList.remove('open'); });
 document.getElementById('manualCAModal').addEventListener('click',e=>{ if(e.target===document.getElementById('manualCAModal')) document.getElementById('manualCAModal').classList.remove('open'); });
+document.getElementById('caAuditModal').addEventListener('click',e=>{ if(e.target===document.getElementById('caAuditModal')) document.getElementById('caAuditModal').classList.remove('open'); });
 
 // ═══════════════════════════════════════════════════════════
 // PARAMÈTRES BOUTIQUE
