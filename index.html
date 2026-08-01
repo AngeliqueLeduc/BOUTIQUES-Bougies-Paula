@@ -216,6 +216,19 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .manager-btn.danger{color:var(--red);background:var(--red-bg);border-color:rgba(176,32,32,.2);}
 .add-boutique-wide{width:100%;padding:13px;border-radius:var(--radius-sm);border:1.5px dashed var(--rose-framboise);background:var(--rose-pale);color:var(--rose-framboise);font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;margin-bottom:12px;}
 
+/* SUIVI URSSAF */
+.urssaf-content{padding:2px 0 8px;}
+.urssaf-month{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:13px;margin-bottom:12px;}
+.urssaf-month-title{font-family:'DM Serif Display',serif;font-size:18px;color:var(--text);margin-bottom:8px;}
+.urssaf-row{display:grid;grid-template-columns:minmax(0,1fr) 82px 62px 62px;gap:6px;align-items:center;padding:8px 0;border-top:1px solid var(--border);font-size:12px;}
+.urssaf-row.global{font-weight:600;background:var(--rose-pale2);margin:6px -6px -3px;padding:9px 6px;border-radius:8px;}
+.urssaf-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.urssaf-amount{text-align:right;font-weight:600;color:var(--orange);}
+.urssaf-check{text-align:center;}
+.urssaf-check input{width:19px;height:19px;accent-color:var(--rose-fuchsia);}
+.urssaf-head{display:grid;grid-template-columns:minmax(0,1fr) 82px 62px 62px;gap:6px;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.25px;padding:0 0 5px;}
+.urssaf-note{font-size:11px;color:var(--text3);line-height:1.45;margin-bottom:12px;}
+
 </style>
 </head>
 <body>
@@ -227,6 +240,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     </div>
     <div class="header-actions">
       <button class="hbtn" onclick="openProjection()">📈 Projection</button>
+      <button class="hbtn" onclick="openUrssafTracking()">🧾 URSSAF</button>
       <button class="hbtn" id="btn-params" onclick="openParamsBoutique()">⚙️ Params</button>
       <button class="hbtn" onclick="openBoutiqueManager()">🏪 Boutiques</button>
       <button class="hbtn" onclick="exportXLSX()">↓ Excel</button>
@@ -507,6 +521,19 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div class="modal-footer">
       <button class="btn-cancel" onclick="document.getElementById('objectiveModal').classList.remove('open')">Annuler</button>
       <button class="btn-save" onclick="saveEnterpriseObjective()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal suivi URSSAF -->
+<div class="modal-bg" id="urssafModal">
+  <div class="modal" style="max-width:620px">
+    <div class="modal-handle"></div>
+    <h2>🧾 Suivi URSSAF</h2>
+    <div class="urssaf-note">Montants calculés à 12,3 % du chiffre d’affaires de chaque boutique. Coche les étapes au fur et à mesure : les choix sont sauvegardés automatiquement sur cet appareil.</div>
+    <div id="urssafTrackingContent" class="urssaf-content"></div>
+    <div class="modal-footer">
+      <button class="btn-save" onclick="document.getElementById('urssafModal').classList.remove('open')">Fermer</button>
     </div>
   </div>
 </div>
@@ -994,16 +1021,33 @@ function renderStats(){
   }).join('');
 }
 
+let statSaleEditOriginalQty=0;
+
 function openStatSaleEditor(month, encodedIdentity){
   const identity=decodeURIComponent(encodedIdentity);
   const entries=salesHistory.filter(v=>v.month===month && saleIdentityKey(v.ref,v.nom)===identity);
   let qty=entries.reduce((sum,v)=>sum+(Number(v.qty)||0),0);
   let amount=entries.reduce((sum,v)=>sum+(Number(v.amount)||0),0);
-  let ref=entries[0]?.ref||'', nom=entries[0]?.nom||'';
-  if(!entries.length){
-    const p=products.find(x=>saleIdentityKey(x.ref,x.nom)===identity);
-    if(p){ ref=p.ref||''; nom=p.nom||p.ref||'Article'; qty=Number(p.sold)||0; amount=qty*(Number(p.prix)||0); }
+  const prod=products.find(x=>saleIdentityKey(x.ref,x.nom)===identity);
+  let ref=entries[0]?.ref||prod?.ref||'';
+  let nom=entries[0]?.nom||prod?.nom||ref||'Article';
+
+  // Certaines anciennes ventes existent uniquement dans le compteur « vendu » du produit
+  // et ne possèdent pas encore de ligne dans salesHistory. Elles sont affichées dans le
+  // mois courant par renderStats(). Il faut les inclure dans la quantité d'origine afin
+  // qu'un déplacement vers un autre mois ne les laisse pas également dans le mois courant.
+  if(prod && month===monthKey(new Date())){
+    const trackedAllMonths=salesHistory
+      .filter(v=>saleIdentityKey(v.ref,v.nom)===identity)
+      .reduce((sum,v)=>sum+(Number(v.qty)||0),0);
+    const implicitQty=Math.max(0,(Number(prod.sold)||0)-trackedAllMonths);
+    if(implicitQty>0){
+      qty+=implicitQty;
+      amount+=implicitQty*(Number(prod.prix)||0);
+    }
   }
+
+  statSaleEditOriginalQty=qty;
   document.getElementById('ess-original-month').value=month;
   document.getElementById('ess-month-display').value=month;
   document.getElementById('ess-identity').value=identity;
@@ -1023,7 +1067,10 @@ function saveStatSaleEdit(){
 
   // Rechercher les ventes dans leur mois d'origine, même si le mois est modifié dans la fenêtre.
   const existing=salesHistory.filter(v=>v.month===originalMonth && saleIdentityKey(v.ref,v.nom)===identity);
-  const oldQty=existing.reduce((sum,v)=>sum+(Number(v.qty)||0),0);
+  // Utiliser la quantité réellement affichée avant modification, y compris les anciennes
+  // ventes implicites absentes de salesHistory. Ainsi, changer uniquement le mois ne
+  // modifie ni le stock ni le compteur vendu et ne crée aucun doublon.
+  const oldQty=statSaleEditOriginalQty;
   const sample=existing[0];
   const prod=products.find(p=>saleIdentityKey(p.ref,p.nom)===identity);
   const ref=sample?.ref||prod?.ref||'';
@@ -1669,7 +1716,7 @@ function exportXLSX(){
 function exportDonnees(){
   const isGlobal = currentBoutique >= BOUTIQUES.length;
   if(isGlobal){
-    const allData={'__config__': BOUTIQUES, '__global_history__': loadGlobalHistory()};
+    const allData={'__config__': BOUTIQUES, '__global_history__': loadGlobalHistory(), '__urssaf_tracking__': loadUrssafTracking()};
     BOUTIQUES.forEach(b=>{ try{ const r=localStorage.getItem(b.storageKey); allData[b.id]=r?JSON.parse(r):{}; }catch(e){allData[b.id]={};} });
     const a=document.createElement('a');
     a.href=URL.createObjectURL(new Blob([JSON.stringify(allData,null,2)],{type:'application/json'}));
@@ -1695,6 +1742,7 @@ function importDonnees(event){
         BOUTIQUES.length=0; data['__config__'].forEach(b=>BOUTIQUES.push(b)); saveBoutiquesConfig();
         BOUTIQUES.forEach(b=>{ if(data[b.id]) localStorage.setItem(b.storageKey,JSON.stringify(data[b.id])); });
         if(data['__global_history__']) saveGlobalHistory(data['__global_history__']);
+        if(data['__urssaf_tracking__']) saveUrssafTracking(data['__urssaf_tracking__']);
         renderBoutiqueBar(); switchBoutique(0);
         event.target.value=''; showToast('✅ Toutes les boutiques restaurées !'); return;
       }
@@ -1708,6 +1756,90 @@ function importDonnees(event){
     } catch(err){ showToast('⚠️ Erreur lecture sauvegarde'); console.error(err); }
   };
   reader.readAsText(file);
+}
+
+// ═══════════════════════════════════════════════════════════
+// SUIVI URSSAF
+// ═══════════════════════════════════════════════════════════
+const URSSAF_TRACKING_KEY='bougies_paula_urssaf_tracking_v1';
+function loadUrssafTracking(){
+  try{return JSON.parse(localStorage.getItem(URSSAF_TRACKING_KEY)||'{}');}catch(e){return {};}
+}
+function saveUrssafTracking(data){
+  try{localStorage.setItem(URSSAF_TRACKING_KEY,JSON.stringify(data));}catch(e){}
+}
+function getBoutiqueMonthlyCA(b){
+  const out={};
+  try{
+    const raw=localStorage.getItem(b.storageKey);
+    if(!raw) return out;
+    const data=JSON.parse(raw);
+    (data.salesHistory||[]).forEach(v=>{
+      const m=v.month||monthKey(v.date||new Date());
+      out[m]=(out[m]||0)+(Number(v.amount)||0);
+    });
+    Object.entries(data.manualCA||{}).forEach(([m,v])=>{out[m]=(out[m]||0)+(Number(v)||0);});
+  }catch(e){}
+  return out;
+}
+function setUrssafStatus(month,boutiqueId,field,checked){
+  const data=loadUrssafTracking();
+  if(!data[month]) data[month]={};
+  if(!data[month][boutiqueId]) data[month][boutiqueId]={};
+  data[month][boutiqueId][field]=!!checked;
+  saveUrssafTracking(data);
+  renderUrssafTracking();
+}
+function setUrssafGlobalStatus(month,field,checked){
+  const data=loadUrssafTracking();
+  if(!data[month]) data[month]={};
+  BOUTIQUES.forEach(b=>{
+    if(!data[month][b.id]) data[month][b.id]={};
+    data[month][b.id][field]=!!checked;
+  });
+  saveUrssafTracking(data);
+  renderUrssafTracking();
+}
+function openUrssafTracking(){
+  renderUrssafTracking();
+  document.getElementById('urssafModal').classList.add('open');
+}
+function renderUrssafTracking(){
+  const el=document.getElementById('urssafTrackingContent');
+  if(!el) return;
+  const byBoutique=BOUTIQUES.map(b=>({b,months:getBoutiqueMonthlyCA(b)}));
+  const monthSet=new Set([monthKey(new Date())]);
+  byBoutique.forEach(x=>Object.keys(x.months).forEach(m=>monthSet.add(m)));
+  const months=[...monthSet].sort().reverse();
+  const tracking=loadUrssafTracking();
+  el.innerHTML=months.map(m=>{
+    let total=0;
+    const rows=byBoutique.map(({b,months})=>{
+      const ca=Number(months[m]||0);
+      const amount=Number((ca*URSSAF_RATE).toFixed(2));
+      total+=amount;
+      const st=(tracking[m]&&tracking[m][b.id])||{};
+      return `<div class="urssaf-row">
+        <div class="urssaf-name">${b.emoji||'🏪'} ${b.nom}<div style="font-size:10px;color:var(--text3);margin-top:2px">CA ${ca.toFixed(2)} €</div></div>
+        <div class="urssaf-amount">${amount.toFixed(2)} €</div>
+        <div class="urssaf-check"><input type="checkbox" ${st.declared?'checked':''} onchange="setUrssafStatus('${m}','${b.id}','declared',this.checked)" title="Déclaration faite"></div>
+        <div class="urssaf-check"><input type="checkbox" ${st.paid?'checked':''} onchange="setUrssafStatus('${m}','${b.id}','paid',this.checked)" title="Prélèvement effectué"></div>
+      </div>`;
+    }).join('');
+    const allDeclared=BOUTIQUES.length>0&&BOUTIQUES.every(b=>tracking[m]&&tracking[m][b.id]&&tracking[m][b.id].declared);
+    const allPaid=BOUTIQUES.length>0&&BOUTIQUES.every(b=>tracking[m]&&tracking[m][b.id]&&tracking[m][b.id].paid);
+    return `<div class="urssaf-month">
+      <div class="urssaf-month-title">${fmtMonth(m)}</div>
+      <div class="urssaf-head"><div>Boutique</div><div style="text-align:right">URSSAF</div><div style="text-align:center">Déclaré</div><div style="text-align:center">Prélevé</div></div>
+      ${rows}
+      <div class="urssaf-row global">
+        <div class="urssaf-name">🌸 Total global</div>
+        <div class="urssaf-amount">${total.toFixed(2)} €</div>
+        <div class="urssaf-check"><input type="checkbox" ${allDeclared?'checked':''} onchange="setUrssafGlobalStatus('${m}','declared',this.checked)" title="Tout marquer déclaré"></div>
+        <div class="urssaf-check"><input type="checkbox" ${allPaid?'checked':''} onchange="setUrssafGlobalStatus('${m}','paid',this.checked)" title="Tout marquer prélevé"></div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1877,6 +2009,8 @@ document.getElementById('boutiqueManagerModal').addEventListener('click',e=>{ if
 document.getElementById('ghistModal').addEventListener('click',e=>{ if(e.target===document.getElementById('ghistModal')) document.getElementById('ghistModal').classList.remove('open'); });
 document.getElementById('objectiveModal').addEventListener('click',e=>{ if(e.target===document.getElementById('objectiveModal')) document.getElementById('objectiveModal').classList.remove('open'); });
 document.getElementById('projectionModal').addEventListener('click',e=>{ if(e.target===document.getElementById('projectionModal')) document.getElementById('projectionModal').classList.remove('open'); });
+document.getElementById('urssafModal').addEventListener('click',e=>{ if(e.target===document.getElementById('urssafModal')) document.getElementById('urssafModal').classList.remove('open'); });
+
 
 // ── DÉMARRAGE ─────────────────────────────────────────────
 loadBoutiquesConfig();
