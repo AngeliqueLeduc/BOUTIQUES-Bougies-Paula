@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="Bougies Paula">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>Bougies Paula V8 — Périodes et prévisionnel</title>
+<title>Bougies Paula V8 stable — Entreprise et prévisions</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -411,31 +411,27 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <label>Loyer du 1er mois (€) — si mois incomplet</label>
     <input type="number" id="p-loyer-premier" step="0.01" min="0" inputmode="decimal" placeholder="Laisser vide si mois complet">
     <div style="font-size:11px;color:var(--text3);margin-top:6px;font-style:italic">
-      Avant la date d'ouverture, la boutique est ignorée dans les calculs. Après sa date de fin, elle reste visible dans son historique mais n'entre plus dans les calculs courants.
+      Avant la date d'ouverture, aucun loyer n'est comptabilisé. Le loyer du 1er mois s'applique uniquement au mois d'ouverture, puis le loyer standard s'applique dès le mois suivant.
     </div>
 
-    <div style="margin-top:16px;padding:14px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm)">
-      <div style="font-family:'DM Serif Display',serif;font-size:17px;margin-bottom:8px">👁️ Visibilité et prévisionnel</div>
+    <div style="margin-top:18px;padding:14px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm)">
+      <div style="font-family:'DM Serif Display',serif;font-size:17px;color:var(--text);margin-bottom:6px">👁️ Visibilité et prévisionnel</div>
       <label style="display:flex;align-items:center;gap:9px;text-transform:none;letter-spacing:0;font-size:13px;margin-top:8px">
-        <input type="checkbox" id="p-active" style="width:18px;height:18px;padding:0">
-        Boutique active et visible dans la barre
+        <input type="checkbox" id="p-active" style="width:18px;height:18px;padding:0"> Boutique active et visible
       </label>
       <label style="display:flex;align-items:center;gap:9px;text-transform:none;letter-spacing:0;font-size:13px;margin-top:12px">
-        <input type="checkbox" id="p-include-forecast" style="width:18px;height:18px;padding:0">
-        Inclure cette boutique dans la projection globale
+        <input type="checkbox" id="p-include-forecast" style="width:18px;height:18px;padding:0"> Inclure dans la projection globale
       </label>
       <label>Mode de projection</label>
       <select id="p-forecast-mode">
         <option value="normal">Projection normale</option>
         <option value="prudent">Projection prudente</option>
-        <option value="actuel">Conserver uniquement le CA déjà réalisé</option>
+        <option value="actuel">CA déjà réalisé uniquement</option>
         <option value="exclude">Exclure du prévisionnel</option>
       </select>
       <label>Coefficient de prudence (%)</label>
       <input type="number" id="p-forecast-factor" min="0" max="200" step="5" inputmode="decimal" placeholder="100">
-      <div style="font-size:11px;color:var(--text3);margin-top:6px">
-        Exemple : 50 % pour une boutique très aléatoire ou à faible fréquentation. Le mode « CA déjà réalisé » n'extrapole aucune vente future.
-      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:6px">Exemple : 50 % pour une boutique très aléatoire. Le mode « CA déjà réalisé » n'extrapole aucune vente future.</div>
     </div>
 
     <div style="margin-top:18px;padding:14px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm)">
@@ -612,45 +608,20 @@ function loadBoutiquesConfig(){
   normalizeAllBoutiques();
 }
 function saveBoutiquesConfig(){ localStorage.setItem('boutiques_config_v2',JSON.stringify(BOUTIQUES)); }
-
 function normalizeBoutiqueSettings(b){
   if(!b) return b;
-  if(b.active === undefined) b.active = true;
-  if(b.includeForecast === undefined) b.includeForecast = true;
-  if(!b.forecastMode) b.forecastMode = isSiteBoutique(b) ? 'actuel' : 'normal';
-  if(b.forecastFactor === undefined || b.forecastFactor === null) b.forecastFactor = b.forecastMode === 'prudent' ? 50 : 100;
+  if(b.active===undefined) b.active=true;
+  if(b.includeForecast===undefined) b.includeForecast=true;
+  if(!b.forecastMode) b.forecastMode=isSiteBoutique(b)?'actuel':'normal';
+  if(b.forecastFactor===undefined || b.forecastFactor===null) b.forecastFactor=b.forecastMode==='prudent'?50:100;
   return b;
 }
 function normalizeAllBoutiques(){ BOUTIQUES.forEach(normalizeBoutiqueSettings); }
-
-function boutiqueOpeningMonth(b){
-  if(!b || !b.ouverture) return null;
-  const d=new Date(b.ouverture+'T12:00:00');
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
-}
-function boutiqueClosingMonth(b){
-  if(!b || !b.dateFin) return null;
-  const d=new Date(b.dateFin+'T12:00:00');
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
-}
-function boutiqueExistsInMonth(b,mk){
-  if(!b) return false;
-  const open=boutiqueOpeningMonth(b), close=boutiqueClosingMonth(b);
-  if(open && mk<open) return false;
-  if(close && mk>close) return false;
-  return true;
-}
-function boutiqueIsActiveNow(b){
-  normalizeBoutiqueSettings(b);
-  if(b.active===false) return false;
-  const mk=monthKey(new Date());
-  return boutiqueExistsInMonth(b,mk);
-}
-function boutiqueCountsInForecast(b,mk){
-  normalizeBoutiqueSettings(b);
-  return boutiqueExistsInMonth(b,mk) && b.active!==false && b.includeForecast!==false && b.forecastMode!=='exclude';
-}
-
+function boutiqueOpeningMonth(b){ if(!b||!b.ouverture) return null; const d=new Date(b.ouverture+'T12:00:00'); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+function boutiqueClosingMonth(b){ if(!b||!b.dateFin) return null; const d=new Date(b.dateFin+'T12:00:00'); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+function boutiqueExistsInMonth(b,mk){ const o=boutiqueOpeningMonth(b),f=boutiqueClosingMonth(b); if(o&&mk<o)return false; if(f&&mk>f)return false; return true; }
+function boutiqueIsVisibleNow(b){ normalizeBoutiqueSettings(b); return b.active!==false && boutiqueExistsInMonth(b,monthKey(new Date())); }
+function boutiqueIncludedInForecast(b,mk){ normalizeBoutiqueSettings(b); return boutiqueExistsInMonth(b,mk) && b.active!==false && b.includeForecast!==false && b.forecastMode!=='exclude'; }
 
 const URSSAF_RATE = 0.123;
 
@@ -793,12 +764,10 @@ function saveData(){
 // RENDU DE LA BARRE BOUTIQUES
 // ═══════════════════════════════════════════════════════════
 function renderBoutiqueBar(){
-  const bar = document.getElementById('boutique-bar');
-  const visible = BOUTIQUES.map((b,i)=>({b,i})).filter(x=>boutiqueIsActiveNow(x.b));
-  bar.innerHTML = visible.map(({b,i})=>
-    `<button class="b-btn${i===currentBoutique?' active':''}" onclick="switchBoutique(${i})">${b.emoji} ${b.nom.split('—')[0].split(' ')[0]}</button>`
-  ).join('')
-  + `<button class="b-btn${currentBoutique>=BOUTIQUES.length?' active':''}" onclick="switchBoutique(${BOUTIQUES.length})">📊</button>`
+  const bar=document.getElementById('boutique-bar');
+  const visible=BOUTIQUES.map((b,i)=>({b,i})).filter(x=>boutiqueIsVisibleNow(x.b));
+  bar.innerHTML=visible.map(({b,i})=>`<button class="b-btn${i===currentBoutique?' active':''}" onclick="switchBoutique(${i})">${b.emoji} ${b.nom.split('—')[0].split(' ')[0]}</button>`).join('')
+  + `<button class="b-btn${currentBoutique>=BOUTIQUES.length?' active':''}" onclick="switchBoutique(${BOUTIQUES.length})">🏢 Entreprise</button>`
   + `<button class="b-btn" onclick="openNewBoutique()" style="background:rgba(255,255,255,0.04);border-style:dashed">＋</button>`;
 }
 
@@ -895,7 +864,7 @@ function updateGlobalStats(){
   const prevKey=monthKey(new Date(now.getFullYear(),now.getMonth()-1,1));
   let caMois=0,caPrev=0;
 
-  BOUTIQUES.filter(b=>boutiqueExistsInMonth(b,m)).forEach(b=>{
+  BOUTIQUES.forEach(b=>{
     try{
       const raw=localStorage.getItem(b.storageKey);
       if(!raw) return;
@@ -1448,12 +1417,12 @@ function getEnterpriseObjective(){ return Number(localStorage.getItem(ENTERPRISE
 function openEnterpriseObjective(){ document.getElementById('objective-net').value=getEnterpriseObjective(); document.getElementById('objectiveModal').classList.add('open'); }
 function saveEnterpriseObjective(){ const v=Number(document.getElementById('objective-net').value); if(!Number.isFinite(v)||v<0){showToast('⚠️ Objectif invalide');return;} localStorage.setItem(ENTERPRISE_OBJECTIVE_KEY,String(v)); document.getElementById('objectiveModal').classList.remove('open'); renderDashboard(); showToast('🎯 Objectif enregistré'); }
 function estimateGlobalProjection(date){
-  const mk=monthKey(date),rows=BOUTIQUES.map((b,i)=>projectionForBoutique(i,date,getBoutiqueMonthCA(i,mk),true));
+  const mk=monthKey(date),rows=BOUTIQUES.map((b,i)=>({b,i})).filter(x=>boutiqueIncludedInForecast(x.b,mk)).map(x=>projectionForBoutique(x.i,date,getBoutiqueMonthCA(x.i,mk),true));
   return {ca:rows.reduce((s,x)=>s+x.projectedCA,0),net:rows.reduce((s,x)=>s+x.r.net,0),rows};
 }
 function requiredGlobalCAForNet(target,mk){
   let lo=0,hi=Math.max(1000,target*4+5000);
-  const globalNet=ca=>{ const weights=BOUTIQUES.map(b=>1/Math.max(1,BOUTIQUES.length)); return BOUTIQUES.reduce((s,b,i)=>s+calcResultForBoutique(ca*weights[i],mk,b).net,0); };
+  const active=BOUTIQUES.filter(b=>boutiqueIncludedInForecast(b,mk)); const globalNet=ca=>{ const w=1/Math.max(1,active.length); return active.reduce((s,b)=>s+calcResultForBoutique(ca*w,mk,b).net,0); };
   while(globalNet(hi)<target&&hi<1e7) hi*=2;
   for(let i=0;i<60;i++){const mid=(lo+hi)/2;if(globalNet(mid)<target)lo=mid;else hi=mid;} return hi;
 }
@@ -1508,7 +1477,7 @@ function renderDashboard(){
   const dailyNeeded=remainingDays?remainingCA/remainingDays:remainingCA;
   const ranking=[...lignes].sort((a,b)=>b.caMois-a.caMois);
   const allProducts={};
-  BOUTIQUES.forEach((b,i)=>{try{const d=JSON.parse(localStorage.getItem(b.storageKey)||'{}');(d.salesHistory||[]).filter(x=>x.month===curKey).forEach(x=>{const k=productStatsKey(x.ref,x.nom,(Number(x.amount)||0)/(Number(x.qty)||1));if(!allProducts[k])allProducts[k]={nom:x.nom||x.ref||'Article',qty:0,ca:0};allProducts[k].qty+=Number(x.qty)||0;allProducts[k].ca+=Number(x.amount)||0;});}catch(e){}});
+  BOUTIQUES.forEach((b,i)=>{if(!boutiqueExistsInMonth(b,curKey))return;try{const d=JSON.parse(localStorage.getItem(b.storageKey)||'{}');(d.salesHistory||[]).filter(x=>x.month===curKey).forEach(x=>{const k=productStatsKey(x.ref,x.nom,(Number(x.amount)||0)/(Number(x.qty)||1));if(!allProducts[k])allProducts[k]={nom:x.nom||x.ref||'Article',qty:0,ca:0};allProducts[k].qty+=Number(x.qty)||0;allProducts[k].ca+=Number(x.amount)||0;});}catch(e){}});
   const topProducts=Object.values(allProducts).sort((a,b)=>b.qty-a.qty||b.ca-a.ca).slice(0,5);
   const progress=objective>0?Math.max(0,Math.min(100,totalNet/objective*100)):100;
   el.innerHTML=`
@@ -1518,7 +1487,7 @@ function renderDashboard(){
     <div class="dash-card"><div class="dash-title">⭐ Produits les plus vendus</div>${topProducts.length?topProducts.map((p,i)=>`<div class="rank-row"><div class="rank-num">${i+1}</div><div>${p.nom}</div><div style="text-align:right;font-weight:600">${p.qty} vente${p.qty>1?'s':''}<div style="font-size:11px;color:var(--text3)">${p.ca.toFixed(2)} €</div></div></div>`).join(''):'<div class="empty" style="padding:1rem 0">Aucune vente détaillée ce mois-ci.</div>'}</div>
     <div class="dash-card" style="border:2px solid var(--amber);background:var(--amber-pale);margin-bottom:14px">
       <div class="dash-title">📊 Vue globale — ${fmtMonth(curKey)}</div>
-      <div class="dash-row"><span class="dash-lbl">Taux par boutique</span><span class="dash-val">${BOUTIQUES.map(b=>{const t=getBoutiqueMonthlyTerms(b,curKey);return `${b.nom.split('—')[0].trim()} ${(t.tauxCommission*100).toFixed(1)}%`;}).join(' · ')}</span></div>
+      <div class="dash-row"><span class="dash-lbl">Taux par boutique</span><span class="dash-val">${BOUTIQUES.filter(b=>boutiqueExistsInMonth(b,curKey)).map(b=>{const t=getBoutiqueMonthlyTerms(b,curKey);return `${b.nom.split('—')[0].trim()} ${(t.tauxCommission*100).toFixed(1)}%`;}).join(' · ')}</span></div>
       <div class="dash-row"><span class="dash-lbl">CA total ce mois</span><span class="dash-val ok">${totalMois.toFixed(2)} €</span></div>
       <div class="dash-row"><span class="dash-lbl">− Commissions (total)</span><span class="dash-val" style="color:var(--red)">− ${totalComm.toFixed(2)} €</span></div>
       <div class="dash-row" style="background:rgba(194,24,91,0.07)"><span class="dash-lbl" style="font-weight:500">💳 Virements attendus</span><span class="dash-val" style="color:var(--amber-dark);font-weight:600">${totalVirement.toFixed(2)} €</span></div>
@@ -1652,32 +1621,18 @@ function renderGlobalHistSection(curKey){
 
 function getBoutiqueMonthlyTerms(b,mk){
   normalizeBoutiqueSettings(b);
-  const conditions = (b && b.monthlyConditions) || {};
-  const monthly = conditions[mk] || {};
-  const exists = boutiqueExistsInMonth(b,mk);
-
-  let loyer = exists ? (Number(b && b.loyer) || 0) : 0;
-  let tauxCommission = exists ? (Number(b && b.commission) || 0) : 0;
-  const moisOuverture = boutiqueOpeningMonth(b);
-
-  if(exists && moisOuverture && mk===moisOuverture &&
-     b.loyerPremierMois !== null && b.loyerPremierMois !== undefined){
-    loyer = Number(b.loyerPremierMois) || 0;
-  }
-
+  const conditions=(b&&b.monthlyConditions)||{};
+  const monthly=conditions[mk]||{};
+  const exists=boutiqueExistsInMonth(b,mk);
+  let loyer=exists?(Number(b&&b.loyer)||0):0;
+  let tauxCommission=exists?(Number(b&&b.commission)||0):0;
+  const moisOuverture=boutiqueOpeningMonth(b);
+  if(exists && moisOuverture===mk && b.loyerPremierMois!==null && b.loyerPremierMois!==undefined) loyer=Number(b.loyerPremierMois)||0;
   if(exists){
-    if(Object.prototype.hasOwnProperty.call(monthly,'loyer')) loyer = Number(monthly.loyer) || 0;
-    if(Object.prototype.hasOwnProperty.call(monthly,'commission')) tauxCommission = Number(monthly.commission) || 0;
+    if(Object.prototype.hasOwnProperty.call(monthly,'loyer')) loyer=Number(monthly.loyer)||0;
+    if(Object.prototype.hasOwnProperty.call(monthly,'commission')) tauxCommission=Number(monthly.commission)||0;
   }
-
-  return {
-    loyer, tauxCommission,
-    isMonthlyOverride: exists && !!conditions[mk],
-    avantOuverture: !!(moisOuverture && mk<moisOuverture),
-    apresFermeture: !!(boutiqueClosingMonth(b) && mk>boutiqueClosingMonth(b)),
-    exists,
-    moisOuverture
-  };
+  return {loyer,tauxCommission,isMonthlyOverride:exists&&!!conditions[mk],exists,avantOuverture:!!(moisOuverture&&mk<moisOuverture),apresFermeture:!!(boutiqueClosingMonth(b)&&mk>boutiqueClosingMonth(b)),moisOuverture};
 }
 
 function calcResultForBoutique(ca,mk,b){
@@ -1741,57 +1696,30 @@ function countMarketDays(start,end,weekday){
   while(d<=last){ if(d.getDay()===weekday) n++; d.setDate(d.getDate()+1); } return n;
 }
 function projectionForBoutique(idx,date,caToDate,excludeSundays){
-  const b=BOUTIQUES[idx], mk=monthKey(date);
-  normalizeBoutiqueSettings(b);
-  if(!boutiqueExistsInMonth(b,mk)){
-    const r=calcResultForBoutique(0,mk,b);
-    return {mode:'inactive',elapsed:0,total:0,remaining:0,avg:0,projectedCA:0,r,note:'Boutique hors de sa période d’existence pour ce mois.',included:false};
-  }
-  if(!boutiqueCountsInForecast(b,mk)){
-    const r=calcResultForBoutique(caToDate,mk,b);
-    return {mode:'excluded',elapsed:0,total:0,remaining:0,avg:0,projectedCA:caToDate,r,note:'Boutique exclue de la projection globale dans ses paramètres.',included:false};
-  }
-
-  const first=new Date(date.getFullYear(),date.getMonth(),1), last=new Date(date.getFullYear(),date.getMonth()+1,0);
-  let projectedCA=caToDate, elapsed=0,total=0,remaining=0,avg=0,mode='standard',note='';
-
-  if(b.forecastMode==='actuel' || isSiteBoutique(b)){
-    mode='actuel';
-    note='Aucune extrapolation : le CA déjà réalisé est conservé comme projection.';
-  } else if(isKerityBoutique(b)){
-    mode='kerity';
-    const weekday=(b.jourMarche===0||b.jourMarche)?Number(b.jourMarche):3;
-    const configuredEnd=b.dateFin?projectionDateToLocal(b.dateFin):last;
-    const effectiveLast=last<configuredEnd?last:configuredEnd;
-    const opening=b.ouverture?projectionDateToLocal(b.ouverture):first;
-    const effectiveFirst=opening>first?opening:first;
-    const cappedDate=date>effectiveLast?effectiveLast:date;
-    elapsed=cappedDate<effectiveFirst?0:countMarketDays(effectiveFirst,cappedDate,weekday);
-    total=effectiveLast<effectiveFirst?0:countMarketDays(effectiveFirst,effectiveLast,weekday);
-    remaining=Math.max(0,total-elapsed); avg=elapsed?caToDate/elapsed:0; projectedCA=avg*total;
-    const jours=['dimanches','lundis','mardis','mercredis','jeudis','vendredis','samedis'];
-    note=`Marché projeté uniquement sur les ${jours[weekday]}, dans sa période d’ouverture.`;
+  const b=BOUTIQUES[idx],mk=monthKey(date); normalizeBoutiqueSettings(b);
+  if(!boutiqueExistsInMonth(b,mk)){ const r=calcResultForBoutique(0,mk,b); return {mode:'inactive',elapsed:0,total:0,remaining:0,avg:0,projectedCA:0,r,note:'Boutique hors de sa période d’existence.',included:false}; }
+  if(!boutiqueIncludedInForecast(b,mk)){ const r=calcResultForBoutique(caToDate,mk,b); return {mode:'excluded',elapsed:0,total:0,remaining:0,avg:0,projectedCA:caToDate,r,note:'Boutique exclue de la projection globale.',included:false}; }
+  const first=new Date(date.getFullYear(),date.getMonth(),1),last=new Date(date.getFullYear(),date.getMonth()+1,0);
+  let projectedCA=caToDate,elapsed=0,total=0,remaining=0,avg=0,mode='standard',note='';
+  if(b.forecastMode==='actuel'||isSiteBoutique(b)){ mode='actuel'; note='Aucune extrapolation : CA déjà réalisé uniquement.'; }
+  else if(isKerityBoutique(b)){
+    mode='kerity'; const weekday=(b.jourMarche===0||b.jourMarche)?Number(b.jourMarche):3;
+    const end=b.dateFin?projectionDateToLocal(b.dateFin):last,open=b.ouverture?projectionDateToLocal(b.ouverture):first;
+    const ef=open>first?open:first,el=end<last?end:last,cap=date>el?el:date;
+    elapsed=cap<ef?0:countMarketDays(ef,cap,weekday); total=el<ef?0:countMarketDays(ef,el,weekday); remaining=Math.max(0,total-elapsed); avg=elapsed?caToDate/elapsed:0; projectedCA=avg*total; note='Projection calculée uniquement sur les jours de marché.';
   } else {
-    const opening=b.ouverture?projectionDateToLocal(b.ouverture):first;
-    const closing=b.dateFin?projectionDateToLocal(b.dateFin):last;
-    const effectiveFirst=opening>first?opening:first;
-    const effectiveLast=closing<last?closing:last;
-    elapsed=date<effectiveFirst?0:countProjectionDays(effectiveFirst,date>effectiveLast?effectiveLast:date,excludeSundays);
-    total=effectiveLast<effectiveFirst?0:countProjectionDays(effectiveFirst,effectiveLast,excludeSundays);
-    remaining=Math.max(0,total-elapsed); avg=elapsed?caToDate/elapsed:0; projectedCA=avg*total;
-    note='Projection calculée seulement sur la période d’existence de la boutique.';
+    const open=b.ouverture?projectionDateToLocal(b.ouverture):first,end=b.dateFin?projectionDateToLocal(b.dateFin):last;
+    const ef=open>first?open:first,el=end<last?end:last,cap=date>el?el:date;
+    elapsed=cap<ef?0:countProjectionDays(ef,cap,excludeSundays); total=el<ef?0:countProjectionDays(ef,el,excludeSundays); remaining=Math.max(0,total-elapsed); avg=elapsed?caToDate/elapsed:0; projectedCA=avg*total; note='Projection limitée à la période d’existence de la boutique.';
   }
-
-  const factor=(b.forecastMode==='prudent'?Number(b.forecastFactor||50):Number(b.forecastFactor||100))/100;
-  projectedCA*=factor;
-  if(factor!==1) note+=` Coefficient de prudence appliqué : ${(factor*100).toFixed(0)} %.`;
+  const factor=(b.forecastMode==='prudent'?Number(b.forecastFactor||50):100)/100; projectedCA*=factor; if(factor!==1) note+=` Coefficient appliqué : ${(factor*100).toFixed(0)} %.`;
   return {mode,elapsed,total,remaining,avg,projectedCA,r:calcResultForBoutique(projectedCA,mk,b),note,included:true};
 }
 function openProjection(){
   const select=document.getElementById('proj-boutique');
-  const visible=BOUTIQUES.map((b,i)=>({b,i})).filter(x=>boutiqueIsActiveNow(x.b));
+  const visible=BOUTIQUES.map((b,i)=>({b,i})).filter(x=>boutiqueIsVisibleNow(x.b));
   select.innerHTML=`<option value="global">🏢 Projection globale</option>`+visible.map(({b,i})=>`<option value="${i}">${b.emoji||'🏪'} ${b.nom}</option>`).join('');
-  select.value=(currentBoutique<BOUTIQUES.length && boutiqueIsActiveNow(BOUTIQUES[currentBoutique]))?String(currentBoutique):'global';
+  select.value='global';
   const today=new Date(),localDate=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
   document.getElementById('proj-date').value=localDate;
   refreshProjectionCA();
@@ -1806,14 +1734,12 @@ function calculateProjection(){
   const result=document.getElementById('projectionResult'),value=document.getElementById('proj-boutique').value,date=projectionDateToLocal(document.getElementById('proj-date').value),entered=Number(document.getElementById('proj-ca').value),exclude=document.getElementById('proj-exclude-sundays').checked;
   if(!date||!Number.isFinite(entered)||entered<0){result.innerHTML='<div style="font-size:13px;color:var(--text3);text-align:center;padding:12px">Renseigne une date et un chiffre d’affaires.</div>';return;}
   if(value==='global'){
-    const mk=monthKey(date);
-    const candidates=BOUTIQUES.map((b,i)=>({b,i})).filter(x=>boutiqueCountsInForecast(x.b,mk));
-    const actuals=candidates.map(x=>getBoutiqueMonthCA(x.i,mk)),actualTotal=actuals.reduce((a,b)=>a+b,0),scale=actualTotal>0?entered/actualTotal:1;
-    const rows=candidates.map((x,j)=>({...projectionForBoutique(x.i,date,actuals[j]*scale,exclude),boutique:x.b,index:x.i}));
+    const mk=monthKey(date),actuals=BOUTIQUES.map((b,i)=>getBoutiqueMonthCA(i,mk)),actualTotal=actuals.reduce((a,b)=>a+b,0),scale=actualTotal>0?entered/actualTotal:1;
+    const rows=BOUTIQUES.map((b,i)=>projectionForBoutique(i,date,actuals[i]*scale,exclude));
     const projectedCA=rows.reduce((s,x)=>s+x.projectedCA,0),comm=rows.reduce((s,x)=>s+x.r.commission,0),loyer=rows.reduce((s,x)=>s+x.r.loyer,0),urssaf=rows.reduce((s,x)=>s+x.r.urssaf,0),net=rows.reduce((s,x)=>s+x.r.net,0);
-    result.innerHTML=`<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px"><div style="font-family:'DM Serif Display',serif;font-size:18px;margin-bottom:10px">🏢 Bougies Paula — Global</div><div class="result-row"><span class="result-row-lbl">CA atteint</span><span class="result-row-val">${entered.toFixed(2)} €</span></div><div class="result-row" style="background:rgba(194,24,91,.07)"><span class="result-row-lbl" style="font-weight:600">CA projeté fin de mois</span><span class="result-row-val" style="font-size:16px;color:var(--rose-framboise)">${projectedCA.toFixed(2)} €</span></div><div class="result-row"><span class="result-row-lbl">− Commissions</span><span class="result-row-val minus">− ${comm.toFixed(2)} €</span></div><div class="result-row"><span class="result-row-lbl">− Loyers</span><span class="result-row-val minus">− ${loyer.toFixed(2)} €</span></div><div class="result-row"><span class="result-row-lbl">− URSSAF</span><span class="result-row-val urssaf">− ${urssaf.toFixed(2)} €</span></div><div class="result-row" style="border-top:2px solid var(--amber);margin-top:5px;padding-top:10px"><span class="result-row-lbl" style="font-weight:700">💶 Reste net projeté</span><span style="font-size:19px;font-weight:700;color:${net>=0?'var(--rose-fuchsia)':'var(--red)'}">${net.toFixed(2)} €</span></div></div>`+rows.map(x=>`<div class="dash-card" style="margin-top:8px"><div class="dash-title">${x.boutique.emoji} ${x.boutique.nom}</div><div class="dash-row"><span class="dash-lbl">CA projeté</span><span class="dash-val">${x.projectedCA.toFixed(2)} €</span></div><div class="dash-row"><span class="dash-lbl">Net projeté</span><span class="dash-val ${x.r.net>=0?'ok':''}">${x.r.net.toFixed(2)} €</span></div><div class="proj-note">${x.note}</div></div>`).join(''); return;
+    result.innerHTML=`<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px"><div style="font-family:'DM Serif Display',serif;font-size:18px;margin-bottom:10px">🏢 Bougies Paula — Global</div><div class="result-row"><span class="result-row-lbl">CA atteint</span><span class="result-row-val">${entered.toFixed(2)} €</span></div><div class="result-row" style="background:rgba(194,24,91,.07)"><span class="result-row-lbl" style="font-weight:600">CA projeté fin de mois</span><span class="result-row-val" style="font-size:16px;color:var(--rose-framboise)">${projectedCA.toFixed(2)} €</span></div><div class="result-row"><span class="result-row-lbl">− Commissions</span><span class="result-row-val minus">− ${comm.toFixed(2)} €</span></div><div class="result-row"><span class="result-row-lbl">− Loyers</span><span class="result-row-val minus">− ${loyer.toFixed(2)} €</span></div><div class="result-row"><span class="result-row-lbl">− URSSAF</span><span class="result-row-val urssaf">− ${urssaf.toFixed(2)} €</span></div><div class="result-row" style="border-top:2px solid var(--amber);margin-top:5px;padding-top:10px"><span class="result-row-lbl" style="font-weight:700">💶 Reste net projeté</span><span style="font-size:19px;font-weight:700;color:${net>=0?'var(--rose-fuchsia)':'var(--red)'}">${net.toFixed(2)} €</span></div></div>`+rows.map((x,i)=>`<div class="dash-card" style="margin-top:8px"><div class="dash-title">${BOUTIQUES[i].emoji} ${BOUTIQUES[i].nom}</div><div class="dash-row"><span class="dash-lbl">CA projeté</span><span class="dash-val">${x.projectedCA.toFixed(2)} €</span></div><div class="dash-row"><span class="dash-lbl">Net projeté</span><span class="dash-val ${x.r.net>=0?'ok':''}">${x.r.net.toFixed(2)} €</span></div><div class="proj-note">${x.note}</div></div>`).join(''); return;
   }
-  const idx=Number(value),b=BOUTIQUES[idx],x=projectionForBoutique(idx,date,entered,exclude),r=x.r,pct=(Number(r.tauxCommission)||0)*100;
+  const idx=Number(value),b=BOUTIQUES[idx],x=projectionForBoutique(idx,date,entered,exclude),r=x.r,pct=(Number(b.commission)||0)*100;
   result.innerHTML=`<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px"><div style="font-family:'DM Serif Display',serif;font-size:17px;margin-bottom:10px">${b.emoji||'🏪'} ${b.nom}</div>${x.mode!=='site'?`<div class="result-row"><span class="result-row-lbl">Jours / séances comptés</span><span class="result-row-val">${x.elapsed} / ${x.total}</span></div><div class="result-row"><span class="result-row-lbl">Moyenne</span><span class="result-row-val">${x.avg.toFixed(2)} €</span></div><div class="result-row"><span class="result-row-lbl">Restants</span><span class="result-row-val">${x.remaining}</span></div>`:''}<div class="result-row" style="background:rgba(194,24,91,.07)"><span class="result-row-lbl" style="font-weight:600">CA projeté</span><span class="result-row-val" style="font-size:16px;color:var(--rose-framboise)">${x.projectedCA.toFixed(2)} €</span></div><div class="result-row"><span class="result-row-lbl">− Commission ${pct.toFixed(pct%1?1:0)}%</span><span class="result-row-val minus">− ${r.commission.toFixed(2)} €</span></div><div class="result-row"><span class="result-row-lbl">− Loyer</span><span class="result-row-val minus">− ${r.loyer.toFixed(2)} €</span></div><div class="result-row"><span class="result-row-lbl">− URSSAF</span><span class="result-row-val urssaf">− ${r.urssaf.toFixed(2)} €</span></div><div class="result-row" style="border-top:2px solid var(--amber);margin-top:5px;padding-top:10px"><span class="result-row-lbl" style="font-weight:700">💶 Reste net projeté</span><span style="font-size:19px;font-weight:700;color:${r.net>=0?'var(--rose-fuchsia)':'var(--red)'}">${r.net.toFixed(2)} €</span></div></div><div class="proj-note">${x.note}</div>`;
 }
 
@@ -2038,7 +1964,7 @@ function setUrssafStatus(month,boutiqueId,field,checked){
 function setUrssafGlobalStatus(month,field,checked){
   const data=loadUrssafTracking();
   if(!data[month]) data[month]={};
-  BOUTIQUES.filter(b=>boutiqueExistsInMonth(b,month)).forEach(b=>{
+  BOUTIQUES.forEach(b=>{
     if(!data[month][b.id]) data[month][b.id]={};
     data[month][b.id][field]=!!checked;
   });
@@ -2059,7 +1985,6 @@ function setUrssafMonthMeta(month,field,value){
 function renderUrssafTracking(){
   const el=document.getElementById('urssafTrackingContent');
   if(!el) return;
-
   const byBoutique=BOUTIQUES.map(b=>({b,months:getBoutiqueMonthlyCA(b)}));
   const monthSet=new Set([monthKey(new Date())]);
   byBoutique.forEach(x=>Object.keys(x.months).forEach(m=>monthSet.add(m)));
@@ -2070,24 +1995,18 @@ function renderUrssafTracking(){
   const annualHtml=years.map(year=>{
     const yearMonths=months.filter(m=>m.startsWith(year));
     let annualCA=0,annualUrssaf=0,paidUrssaf=0,declaredMonths=0;
-
     yearMonths.forEach(m=>{
-      const existing=byBoutique.filter(x=>boutiqueExistsInMonth(x.b,m));
-      let monthAllDeclared=existing.length>0;
-
-      existing.forEach(({b,months})=>{
+      let monthAllDeclared=BOUTIQUES.length>0;
+      byBoutique.forEach(({b,months})=>{
         const ca=Number(months[m]||0);
         const amount=Number((ca*URSSAF_RATE).toFixed(2));
-        annualCA+=ca;
-        annualUrssaf+=amount;
+        annualCA+=ca; annualUrssaf+=amount;
         const st=(tracking[m]&&tracking[m][b.id])||{};
         if(st.paid) paidUrssaf+=amount;
         if(!st.declared) monthAllDeclared=false;
       });
-
       if(monthAllDeclared) declaredMonths++;
     });
-
     const remaining=Math.max(0,annualUrssaf-paidUrssaf);
     return `<div class="urssaf-annual">
       <div class="urssaf-annual-title">📊 Cumul ${year}</div>
@@ -2101,15 +2020,11 @@ function renderUrssafTracking(){
 
   const monthsHtml=months.map(m=>{
     let total=0,totalCA=0;
-    const existing=byBoutique.filter(x=>boutiqueExistsInMonth(x.b,m));
-
-    const rows=existing.map(({b,months})=>{
+    const rows=byBoutique.map(({b,months})=>{
       const ca=Number(months[m]||0);
       const amount=Number((ca*URSSAF_RATE).toFixed(2));
-      totalCA+=ca;
-      total+=amount;
+      totalCA+=ca; total+=amount;
       const st=(tracking[m]&&tracking[m][b.id])||{};
-
       return `<div class="urssaf-row">
         <div class="urssaf-name">${b.emoji||'🏪'} ${b.nom}<div style="font-size:10px;color:var(--text3);margin-top:2px">CA ${ca.toFixed(2)} €</div></div>
         <div class="urssaf-amount">${amount.toFixed(2)} €</div>
@@ -2117,17 +2032,10 @@ function renderUrssafTracking(){
         <div class="urssaf-check"><input type="checkbox" ${st.paid?'checked':''} onchange="setUrssafStatus('${m}','${b.id}','paid',this.checked)" title="Prélèvement effectué"></div>
       </div>`;
     }).join('');
-
-    const monthBoutiques=existing.map(x=>x.b);
-    const allDeclared=monthBoutiques.length>0&&monthBoutiques.every(b=>tracking[m]&&tracking[m][b.id]&&tracking[m][b.id].declared);
-    const allPaid=monthBoutiques.length>0&&monthBoutiques.every(b=>tracking[m]&&tracking[m][b.id]&&tracking[m][b.id].paid);
+    const allDeclared=BOUTIQUES.length>0&&BOUTIQUES.every(b=>tracking[m]&&tracking[m][b.id]&&tracking[m][b.id].declared);
+    const allPaid=BOUTIQUES.length>0&&BOUTIQUES.every(b=>tracking[m]&&tracking[m][b.id]&&tracking[m][b.id].paid);
     const meta=(tracking[m]&&tracking[m].__meta__)||{};
-    const status=allPaid
-      ? '<span class="urssaf-status paid">🟢 Prélevé</span>'
-      : allDeclared
-        ? '<span class="urssaf-status declared">🟠 Déclaré — prélèvement à suivre</span>'
-        : '<span class="urssaf-status todo">🔴 À déclarer</span>';
-
+    const status=allPaid?'<span class="urssaf-status paid">🟢 Prélevé</span>':allDeclared?'<span class="urssaf-status declared">🟠 Déclaré — prélèvement à suivre</span>':'<span class="urssaf-status todo">🔴 À déclarer</span>';
     return `<div class="urssaf-month">
       <div class="urssaf-month-title">${fmtMonth(m)}</div>
       ${status}
@@ -2136,7 +2044,7 @@ function renderUrssafTracking(){
         <label>Date prévue de prélèvement<input type="date" value="${meta.paymentDate||''}" onchange="setUrssafMonthMeta('${m}','paymentDate',this.value)"></label>
       </div>
       <div class="urssaf-head"><div>Boutique</div><div style="text-align:right">URSSAF</div><div style="text-align:center">Déclaré</div><div style="text-align:center">Prélevé</div></div>
-      ${rows || '<div class="empty" style="padding:18px">Aucune boutique active sur ce mois.</div>'}
+      ${rows}
       <div class="urssaf-row global">
         <div class="urssaf-name">🌸 Total global<div class="urssaf-global-ca">CA global : ${totalCA.toFixed(2)} €</div></div>
         <div class="urssaf-amount">${total.toFixed(2)} €</div>
@@ -2145,7 +2053,6 @@ function renderUrssafTracking(){
       </div>
     </div>`;
   }).join('');
-
   el.innerHTML=annualHtml+monthsHtml;
 }
 
@@ -2176,10 +2083,10 @@ function openParamsBoutique(){
   toggleParamTypeFields();
   document.getElementById('p-loyer-premier').value  = b.loyerPremierMois !== null && b.loyerPremierMois !== undefined ? b.loyerPremierMois : '';
   normalizeBoutiqueSettings(b);
-  document.getElementById('p-active').checked = b.active !== false;
-  document.getElementById('p-include-forecast').checked = b.includeForecast !== false;
-  document.getElementById('p-forecast-mode').value = b.forecastMode || 'normal';
-  document.getElementById('p-forecast-factor').value = Number(b.forecastFactor ?? 100);
+  document.getElementById('p-active').checked=b.active!==false;
+  document.getElementById('p-include-forecast').checked=b.includeForecast!==false;
+  document.getElementById('p-forecast-mode').value=b.forecastMode||'normal';
+  document.getElementById('p-forecast-factor').value=Number(b.forecastFactor??100);
   const currentMonth = monthKey(new Date());
   document.getElementById('p-cond-month').value = currentMonth;
   loadMonthlyConditionFields();
@@ -2278,15 +2185,14 @@ function saveParamsBoutique(){
   const jourMarche    = jourVal === '' ? null : parseInt(jourVal,10);
   const lpVal        = document.getElementById('p-loyer-premier').value;
   const loyerPremierMois = lpVal !== '' ? parseFloat(lpVal) : null;
-  const active = document.getElementById('p-active').checked;
-  const includeForecast = document.getElementById('p-include-forecast').checked;
-  const forecastMode = document.getElementById('p-forecast-mode').value || 'normal';
-  const factorRaw = document.getElementById('p-forecast-factor').value;
-  const forecastFactor = factorRaw === '' ? 100 : Number(factorRaw);
+  const active=document.getElementById('p-active').checked;
+  const includeForecast=document.getElementById('p-include-forecast').checked;
+  const forecastMode=document.getElementById('p-forecast-mode').value||'normal';
+  const forecastFactor=Number(document.getElementById('p-forecast-factor').value||100);
   if(!nom){ showToast('⚠️ Nom requis'); return; }
   if(isNaN(commission) || commission < 0){ showToast('⚠️ Commission invalide'); return; }
   if(isNaN(loyer) || loyer < 0){ showToast('⚠️ Loyer invalide'); return; }
-  if(!Number.isFinite(forecastFactor) || forecastFactor < 0 || forecastFactor > 200){ showToast('⚠️ Coefficient prévisionnel invalide'); return; }
+  if(!Number.isFinite(forecastFactor)||forecastFactor<0||forecastFactor>200){ showToast('⚠️ Coefficient prévisionnel invalide'); return; }
   b.nom              = nom;
   b.emoji            = emoji;
   b.commission       = commission / 100;
@@ -2296,10 +2202,7 @@ function saveParamsBoutique(){
   b.dateFin          = dateFin;
   b.jourMarche       = jourMarche;
   b.loyerPremierMois = loyerPremierMois;
-  b.active = active;
-  b.includeForecast = includeForecast;
-  b.forecastMode = forecastMode;
-  b.forecastFactor = forecastFactor;
+  b.active=active; b.includeForecast=includeForecast; b.forecastMode=forecastMode; b.forecastFactor=forecastFactor;
   saveBoutiquesConfig();
   renderBoutiqueBar();
   document.getElementById('paramsBoutiqueModal').classList.remove('open');
@@ -2368,7 +2271,7 @@ function saveNewBoutique(){
   const sourceIdx=sourceVal===''?null:parseInt(sourceVal,10);
   const id='boutique_'+Date.now();
   const storageKey='boutique_data_'+id;
-  BOUTIQUES.push({id,nom,emoji,type,storageKey,loyer,loyerPremierMois,ouverture,dateFin,jourMarche,commission:commission/100});
+  BOUTIQUES.push({id,nom,emoji,type,storageKey,loyer,loyerPremierMois,ouverture,dateFin,jourMarche,commission:commission/100,active:true,includeForecast:true,forecastMode:type==='site'?'actuel':'normal',forecastFactor:100});
   if(sourceIdx!==null && BOUTIQUES[sourceIdx]){
     try{
       const sourceRaw=localStorage.getItem(BOUTIQUES[sourceIdx].storageKey);
@@ -2387,33 +2290,9 @@ function openBoutiqueManager(){
 }
 function renderBoutiqueManager(){
   const el=document.getElementById('boutiqueManagerList');
-  el.innerHTML=BOUTIQUES.map((b,i)=>{
-    normalizeBoutiqueSettings(b);
-    const status=b.active===false?'Archivée':boutiqueIsActiveNow(b)?'Active':'Hors période';
-    return `<div class="manager-card">
-      <div class="manager-head"><div>
-        <div class="manager-name">${b.emoji||'🏪'} ${b.nom} ${b.active===false?'🙈':''}</div>
-        <div class="manager-meta">${boutiqueTypeLabel(b.type||'boutique')} · ${status} · Commission ${((Number(b.commission)||0)*100).toFixed(1).replace('.0','')} % · Loyer ${(Number(b.loyer)||0).toFixed(2)} €${b.ouverture?' · depuis '+new Date(b.ouverture+'T12:00:00').toLocaleDateString('fr-FR'):''}${b.dateFin?' · jusqu’au '+new Date(b.dateFin+'T12:00:00').toLocaleDateString('fr-FR'):''}</div>
-        <div class="manager-meta">Prévision : ${b.includeForecast!==false&&b.forecastMode!=='exclude' ? (b.forecastMode==='actuel'?'CA réalisé seulement':b.forecastMode==='prudent'?'prudente '+Number(b.forecastFactor||50)+' %':'normale') : 'exclue'}</div>
-      </div></div>
-      <div class="manager-actions">
-        <button class="manager-btn" onclick="manageEditBoutique(${i})">Modifier</button>
-        <button class="manager-btn" onclick="toggleBoutiqueActive(${i})">${b.active===false?'Réactiver':'Masquer'}</button>
-        <button class="manager-btn" onclick="openNewBoutique(${i})">Dupliquer</button>
-        <button class="manager-btn danger" onclick="deleteBoutiqueManaged(${i})">Supprimer</button>
-      </div>
-    </div>`;
-  }).join('');
+  el.innerHTML=BOUTIQUES.map((b,i)=>{ normalizeBoutiqueSettings(b); const status=b.active===false?'Archivée':boutiqueIsVisibleNow(b)?'Active':'Hors période'; const forecast=b.includeForecast!==false&&b.forecastMode!=='exclude'?(b.forecastMode==='actuel'?'CA réalisé seulement':b.forecastMode==='prudent'?`Prudente ${Number(b.forecastFactor||50)} %`:'Normale'):'Exclue'; return `<div class="manager-card"><div class="manager-head"><div><div class="manager-name">${b.emoji||'🏪'} ${b.nom} ${b.active===false?'🙈':''}</div><div class="manager-meta">${boutiqueTypeLabel(b.type||'boutique')} · ${status} · Commission ${((Number(b.commission)||0)*100).toFixed(1).replace('.0','')} % · Loyer ${(Number(b.loyer)||0).toFixed(2)} €${b.ouverture?' · depuis '+new Date(b.ouverture+'T12:00:00').toLocaleDateString('fr-FR'):''}${b.dateFin?' · jusqu’au '+new Date(b.dateFin+'T12:00:00').toLocaleDateString('fr-FR'):''}</div><div class="manager-meta">Prévision : ${forecast}</div></div></div><div class="manager-actions"><button class="manager-btn" onclick="manageEditBoutique(${i})">Modifier</button><button class="manager-btn" onclick="toggleBoutiqueActive(${i})">${b.active===false?'Réactiver':'Masquer'}</button><button class="manager-btn" onclick="openNewBoutique(${i})">Dupliquer</button><button class="manager-btn danger" onclick="deleteBoutiqueManaged(${i})">Supprimer</button></div></div>`; }).join('');
 }
-function toggleBoutiqueActive(idx){
-  const b=BOUTIQUES[idx]; if(!b) return;
-  normalizeBoutiqueSettings(b);
-  b.active=b.active===false;
-  saveBoutiquesConfig();
-  renderBoutiqueBar(); renderBoutiqueManager();
-  if(currentBoutique===idx && b.active===false) switchBoutique(BOUTIQUES.length);
-  showToast(b.active?'Boutique réactivée':'Boutique masquée — historique conservé');
-}
+function toggleBoutiqueActive(idx){ const b=BOUTIQUES[idx]; if(!b)return; normalizeBoutiqueSettings(b); b.active=b.active===false; saveBoutiquesConfig(); renderBoutiqueBar(); renderBoutiqueManager(); if(currentBoutique===idx&&b.active===false) switchBoutique(BOUTIQUES.length); showToast(b.active?'Boutique réactivée':'Boutique masquée — historique conservé'); }
 function manageEditBoutique(idx){
   document.getElementById('boutiqueManagerModal').classList.remove('open');
   switchBoutique(idx);
