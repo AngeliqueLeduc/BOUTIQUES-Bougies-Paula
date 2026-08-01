@@ -1218,6 +1218,65 @@ function saveGlobalHistory(hist){
   try { localStorage.setItem(GLOBAL_HIST_KEY, JSON.stringify(hist)); } catch(e){}
 }
 
+// État de clôture des mois globaux
+const GLOBAL_CLOSED_KEY = 'bougies_paula_global_closed_months_v76';
+function loadClosedGlobalMonths(){
+  try { return JSON.parse(localStorage.getItem(GLOBAL_CLOSED_KEY)||'{}'); } catch(e){ return {}; }
+}
+function saveClosedGlobalMonths(v){
+  try { localStorage.setItem(GLOBAL_CLOSED_KEY, JSON.stringify(v)); } catch(e){}
+}
+
+// Calcule un mois global directement depuis les ventes de chaque boutique.
+// C'est la même base que le « Global » affiché en haut de l'onglet Entreprise.
+function computeLiveGlobalMonth(mk){
+  let ca=0, comm=0, virement=0, loyer=0, urssaf=0, net=0;
+  BOUTIQUES.forEach(b=>{
+    try{
+      const data=JSON.parse(localStorage.getItem(b.storageKey)||'{}');
+      let caBout=0;
+      (data.salesHistory||[]).forEach(x=>{ if(x.month===mk) caBout += Number(x.amount)||0; });
+      caBout += Number((data.manualCA||{})[mk]||0);
+      const r=calcResultForBoutique(caBout,mk,b);
+      ca+=r.ca; comm+=r.commission; virement+=r.virementLBDA;
+      loyer+=r.loyer; urssaf+=r.urssaf; net+=r.net;
+    }catch(e){}
+  });
+  return {
+    ca:parseFloat(ca.toFixed(2)), comm:parseFloat(comm.toFixed(2)),
+    virement:parseFloat(virement.toFixed(2)), loyer:parseFloat(loyer.toFixed(2)),
+    urssaf:parseFloat(urssaf.toFixed(2)), net:parseFloat(net.toFixed(2)),
+    live:true
+  };
+}
+
+function getAllGlobalMonthKeys(){
+  const keys=new Set(Object.keys(loadGlobalHistory()));
+  BOUTIQUES.forEach(b=>{
+    try{
+      const data=JSON.parse(localStorage.getItem(b.storageKey)||'{}');
+      (data.salesHistory||[]).forEach(x=>{ if(x.month) keys.add(x.month); });
+      Object.keys(data.manualCA||{}).forEach(k=>keys.add(k));
+    }catch(e){}
+  });
+  keys.add(monthKey(new Date()));
+  return [...keys].sort().reverse();
+}
+
+function closeGlobalMonth(mk){
+  if(!confirm(`Clôturer ${fmtMonth(mk)} ? Les chiffres seront figés jusqu'à un éventuel déverrouillage.`)) return;
+  const hist=loadGlobalHistory();
+  hist[mk]={...computeLiveGlobalMonth(mk),auto:false,closedAt:new Date().toISOString()};
+  saveGlobalHistory(hist);
+  const closed=loadClosedGlobalMonths(); closed[mk]=true; saveClosedGlobalMonths(closed);
+  renderDashboard(); showToast(`🔒 ${fmtMonth(mk)} clôturé`);
+}
+function unlockGlobalMonth(mk){
+  if(!confirm(`Déverrouiller ${fmtMonth(mk)} ? Les chiffres seront de nouveau recalculés en direct.`)) return;
+  const closed=loadClosedGlobalMonths(); delete closed[mk]; saveClosedGlobalMonths(closed);
+  renderDashboard(); showToast(`🔓 ${fmtMonth(mk)} déverrouillé`);
+}
+
 function autoSnapshotGlobal(curKey){
   // Calcule et sauvegarde le mois précédent si net > 0 et pas encore snapshottés
   const now = new Date();
@@ -1284,6 +1343,7 @@ function saveEditGlobalHist(){
     auto: false
   };
   saveGlobalHistory(hist);
+  const closed=loadClosedGlobalMonths(); closed[mk]=true; saveClosedGlobalMonths(closed);
   document.getElementById('ghistModal').classList.remove('open');
   renderDashboard();
   showToast(`✓ ${fmtMonth(mk)} enregistré`);
@@ -1293,6 +1353,7 @@ function deleteGlobalHist(mk){
   const hist = loadGlobalHistory();
   delete hist[mk];
   saveGlobalHistory(hist);
+  const closed=loadClosedGlobalMonths(); delete closed[mk]; saveClosedGlobalMonths(closed);
   renderDashboard();
   showToast('Entrée supprimée');
 }
@@ -1421,62 +1482,86 @@ function renderDashboard(){
 
 function renderGlobalHistSection(curKey){
   const hist = loadGlobalHistory();
-  const keys = Object.keys(hist).filter(k => k !== curKey).sort().reverse();
+  const closed = loadClosedGlobalMonths();
+  const keys = getAllGlobalMonthKeys();
+  const now = new Date();
+  const prevKey = monthKey(new Date(now.getFullYear(),now.getMonth()-1,1));
+
+  const entries={};
+  keys.forEach(k=>{
+    const live=computeLiveGlobalMonth(k);
+    // Le mois en cours et le mois précédent restent toujours synchronisés avec
+    // les chiffres du haut. Cela permet notamment de corriger fin juillet une
+    // vente connue début août sans conserver une ancienne photo clôturée.
+    const forceLive = (k===curKey || k===prevKey);
+    if(forceLive) entries[k]={...live,closed:false,synchronised:true};
+    // Pour les mois plus anciens, une clôture conserve la photo validée.
+    else if(closed[k] && hist[k]) entries[k]={...hist[k],closed:true};
+    // Compatibilité : si aucune donnée détaillée n'existe plus, conserver l'ancienne photo.
+    else if(live.ca===0 && hist[k]) entries[k]={...hist[k],closed:false,legacy:true};
+    else entries[k]={...live,closed:false};
+  });
 
   const addBtn = `<div style="padding:0 0 10px">
     <button onclick="openEditGlobalHist('${curKey}')" style="width:100%;padding:12px;border-radius:var(--radius-sm);border:1.5px dashed var(--border);background:transparent;color:var(--text2);font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer">
-      + Saisir / corriger un mois manuellement
+      + Saisir / corriger et clôturer un mois manuellement
     </button>
   </div>`;
 
-  if(!keys.length) return `
-    <div class="dash-card" style="margin-top:6px">
-      <div class="dash-title" style="margin-bottom:10px">📅 Historique mensuel global</div>
-      ${addBtn}
-      <div class="empty" style="padding:1rem 0"><div class="empty-icon" style="font-size:28px">📭</div>Aucun mois clôturé pour l'instant</div>
-    </div>`;
+  if(!keys.length) return `<div class="dash-card" style="margin-top:6px"><div class="dash-title">📅 Historique mensuel global</div>${addBtn}</div>`;
 
-  // Cumul annuel
-  const byYear = {};
-  keys.forEach(k=>{ const y=k.slice(0,4); if(!byYear[y]) byYear[y]={ca:0,comm:0,virement:0,loyer:0,urssaf:0,net:0,months:[]}; const e=hist[k]; byYear[y].ca+=e.ca; byYear[y].comm+=e.comm; byYear[y].virement+=e.virement; byYear[y].loyer+=e.loyer; byYear[y].urssaf+=e.urssaf; byYear[y].net+=e.net; byYear[y].months.push(k); });
-  const years = Object.keys(byYear).sort().reverse();
+  const byYear={};
+  keys.forEach(k=>{
+    const y=k.slice(0,4),e=entries[k];
+    if(!byYear[y]) byYear[y]={ca:0,comm:0,virement:0,loyer:0,urssaf:0,net:0,months:[]};
+    ['ca','comm','virement','loyer','urssaf','net'].forEach(x=>byYear[y][x]+=Number(e[x])||0);
+    byYear[y].months.push(k);
+  });
 
-  const rows = years.map(y=>{
-    const tot = byYear[y];
-    const mRows = byYear[y].months.map(k=>{
-      const e = hist[k];
-      const nc = e.net>=0 ? 'var(--green)' : 'var(--red)';
-      const tag = e.auto ? '' : `<span style="font-size:9px;background:var(--amber-pale);color:var(--amber-dark);border-radius:10px;padding:1px 5px;margin-left:4px">✏️ modifié</span>`;
-      return `<div style="display:flex;align-items:center;padding:7px 0;border-top:1px solid var(--border);gap:6px;flex-wrap:wrap">
-        <span style="flex:1;font-size:13px;font-weight:500;color:var(--text)">${fmtMonth(k)}${tag}</span>
-        <span style="font-size:12px;color:var(--text3)">CA ${e.ca.toFixed(2)} €</span>
-        <span style="font-size:12px;color:var(--red)">−${e.comm.toFixed(2)}</span>
-        <span style="font-size:12px;color:var(--red)">−${e.loyer.toFixed(2)}</span>
-        <span style="font-size:12px;color:var(--orange)">−${e.urssaf.toFixed(2)}</span>
-        <span style="font-size:14px;font-weight:600;color:${nc};min-width:64px;text-align:right">${e.net.toFixed(2)} €</span>
-        <button onclick="openEditGlobalHist('${k}')" style="background:none;border:none;cursor:pointer;font-size:15px;padding:0 2px" title="Corriger">✏️</button>
-        <button onclick="deleteGlobalHist('${k}')" style="background:none;border:none;cursor:pointer;font-size:15px;padding:0 2px" title="Supprimer">🗑️</button>
+  const rows=Object.keys(byYear).sort().reverse().map(y=>{
+    const tot=byYear[y];
+    const mRows=tot.months.map(k=>{
+      const e=entries[k],isClosed=!!closed[k];
+      const nc=e.net>=0?'var(--green)':'var(--red)';
+      const status=isClosed
+        ? `<span style="font-size:9px;background:var(--green-bg);color:var(--green);border-radius:10px;padding:2px 6px;margin-left:4px">🔒 clôturé</span>`
+        : `<span style="font-size:9px;background:var(--amber-pale);color:var(--amber-dark);border-radius:10px;padding:2px 6px;margin-left:4px">● en direct</span>`;
+      const coherence=(k===curKey || k===prevKey)?`<span style="font-size:9px;color:var(--green);margin-left:4px">✓ synchronisé avec le Global du haut</span>`:'';
+      const isSyncedRecent=(k===curKey || k===prevKey);
+      const action=isSyncedRecent
+        ? `<span style="font-size:13px;padding:0 3px" title="Mois synchronisé automatiquement">🔄</span>`
+        : (isClosed
+          ? `<button onclick="unlockGlobalMonth('${k}')" style="background:none;border:none;cursor:pointer;font-size:15px;padding:0 2px" title="Déverrouiller">🔓</button>`
+          : `<button onclick="closeGlobalMonth('${k}')" style="background:none;border:none;cursor:pointer;font-size:15px;padding:0 2px" title="Clôturer">🔒</button>`);
+      return `<div style="padding:8px 0;border-top:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+          <span style="flex:1;font-size:13px;font-weight:500;color:var(--text)">${fmtMonth(k)} ${status}${coherence}</span>
+          <button onclick="openEditGlobalHist('${k}')" style="background:none;border:none;cursor:pointer;font-size:15px;padding:0 2px" title="Corriger manuellement et clôturer">✏️</button>
+          ${action}
+          <button onclick="deleteGlobalHist('${k}')" style="background:none;border:none;cursor:pointer;font-size:15px;padding:0 2px" title="Supprimer la saisie figée">🗑️</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:6px;font-size:11px">
+          <span style="color:var(--text3)">CA <b style="color:var(--text)">${Number(e.ca).toFixed(2)} €</b></span>
+          <span style="color:var(--text3)">Commission <b style="color:var(--red)">−${Number(e.comm).toFixed(2)} €</b></span>
+          <span style="color:var(--text3)">Loyers <b style="color:var(--red)">−${Number(e.loyer).toFixed(2)} €</b></span>
+          <span style="color:var(--text3)">URSSAF <b style="color:var(--orange)">−${Number(e.urssaf).toFixed(2)} €</b></span>
+          <span style="grid-column:span 2;color:var(--text3);text-align:right">Net <b style="font-size:14px;color:${nc}">${Number(e.net).toFixed(2)} €</b></span>
+        </div>
       </div>`;
     }).join('');
-    const ync = tot.net>=0 ? 'var(--green)' : 'var(--red)';
+    const ync=tot.net>=0?'var(--green)':'var(--red)';
     return `<div style="margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0 4px;border-bottom:2px solid var(--amber)">
         <span style="font-family:'DM Serif Display',serif;font-size:15px;color:var(--text)">📅 ${y}</span>
         <span style="font-size:13px;color:var(--text3)">CA ${tot.ca.toFixed(2)} € → <span style="font-weight:700;color:${ync}">${tot.net.toFixed(2)} € net</span></span>
-      </div>
-      <div style="font-size:10px;color:var(--text3);padding:4px 0 2px;display:flex;gap:8px">
-        <span>Commission</span><span>Loyer</span><span>URSSAF</span><span style="margin-left:auto">Net</span>
-      </div>
-      ${mRows}
-    </div>`;
+      </div>${mRows}</div>`;
   }).join('');
 
-  return `
-    <div class="dash-card" style="margin-top:6px">
-      <div class="dash-title" style="margin-bottom:10px">📅 Historique mensuel global</div>
-      ${addBtn}
-      ${rows}
-    </div>`;
+  return `<div class="dash-card" style="margin-top:6px">
+    <div class="dash-title" style="margin-bottom:6px">📅 Historique mensuel global</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:10px">Les mois non clôturés sont recalculés en temps réel. Ils suivent donc exactement les corrections de ventes et le Global affiché en haut.</div>
+    ${addBtn}${rows}
+  </div>`;
 }
 
 function calcResultForBoutique(ca,mk,b){
@@ -1728,7 +1813,7 @@ function exportXLSX(){
 function exportDonnees(){
   const isGlobal = currentBoutique >= BOUTIQUES.length;
   if(isGlobal){
-    const allData={'__config__': BOUTIQUES, '__global_history__': loadGlobalHistory(), '__urssaf_tracking__': loadUrssafTracking()};
+    const allData={'__config__': BOUTIQUES, '__global_history__': loadGlobalHistory(), '__global_closed__': loadClosedGlobalMonths(), '__urssaf_tracking__': loadUrssafTracking()};
     BOUTIQUES.forEach(b=>{ try{ const r=localStorage.getItem(b.storageKey); allData[b.id]=r?JSON.parse(r):{}; }catch(e){allData[b.id]={};} });
     const a=document.createElement('a');
     a.href=URL.createObjectURL(new Blob([JSON.stringify(allData,null,2)],{type:'application/json'}));
@@ -1753,7 +1838,7 @@ function importDonnees(event){
       if(data['__config__']){
         BOUTIQUES.length=0; data['__config__'].forEach(b=>BOUTIQUES.push(b)); saveBoutiquesConfig();
         BOUTIQUES.forEach(b=>{ if(data[b.id]) localStorage.setItem(b.storageKey,JSON.stringify(data[b.id])); });
-        if(data['__global_history__']) saveGlobalHistory(data['__global_history__']);
+        if(data['__global_history__']) saveGlobalHistory(data['__global_history__']); if(data['__global_closed__']) saveClosedGlobalMonths(data['__global_closed__']);
         if(data['__urssaf_tracking__']) saveUrssafTracking(data['__urssaf_tracking__']);
         renderBoutiqueBar(); switchBoutique(0);
         event.target.value=''; showToast('✅ Toutes les boutiques restaurées !'); return;
