@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="Bougies Paula">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>Bougies Paula V8.1 — Contrôle du CA</title>
+<title>Bougies Paula V8.2 — Résultat sans CA fantôme</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -1298,24 +1298,28 @@ function renderResult(){
   const el=document.getElementById('resultContent');
   const byMonth={};
 
-  // Ventes via salesHistory
-  salesHistory.forEach(s=>{ if(!byMonth[s.month]) byMonth[s.month]=0; byMonth[s.month]+=s.amount; });
-
-  // Ventes dans sold mais absentes de salesHistory → rattacher au mois courant
-  const soldInHistory={};
-  salesHistory.forEach(s=>{ const k=productStatsKey(s.ref,s.nom,(Number(s.amount)||0)/(Number(s.qty)||1)); if(!soldInHistory[k]) soldInHistory[k]=0; soldInHistory[k]+=Number(s.qty)||0; });
-  const curKey=monthKey(new Date());
-  products.forEach(p=>{
-    const manquant=(p.sold||0)-(soldInHistory[productStatsKey(p.ref,p.nom,p.prix)]||0);
-    if(manquant>0&&p.prix>0){
-      if(!byMonth[curKey]) byMonth[curKey]=0;
-      byMonth[curKey]+=manquant*p.prix;
-    }
+  // Source unique et cohérente :
+  // uniquement les ventes réellement enregistrées dans salesHistory
+  // et les CA forfaitaires saisis volontairement.
+  salesHistory.forEach(s=>{
+    if(!s.month) return;
+    if(!byMonth[s.month]) byMonth[s.month]=0;
+    byMonth[s.month]+=Number(s.amount)||0;
   });
 
-  Object.keys(manualCA).forEach(m=>{ if(!byMonth[m]) byMonth[m]=0; byMonth[m]+=manualCA[m]; });
+  Object.keys(manualCA).forEach(m=>{
+    const amount=Number(manualCA[m])||0;
+    if(amount===0) return;
+    if(!byMonth[m]) byMonth[m]=0;
+    byMonth[m]+=amount;
+  });
+
+  // Ne pas afficher les mois dont le CA est réellement nul.
+  Object.keys(byMonth).forEach(m=>{
+    if(Math.abs(Number(byMonth[m])||0)<0.005) delete byMonth[m];
+  });
   const months=Object.keys(byMonth).sort().reverse();
-  if(!months.length){ el.innerHTML=`<div class="empty"><div class="empty-icon">💰</div>Aucune donnée disponible.</div>`; return; }
+  if(!months.length){ el.innerHTML=`<div class="empty"><div class="empty-icon">💰</div>Aucune vente ni CA forfaitaire enregistré pour cette boutique.</div>`; return; }
   const byYear={};
   months.forEach(m=>{ const y=m.slice(0,4); if(!byYear[y]) byYear[y]=[]; byYear[y].push(m); });
   const years=Object.keys(byYear).sort().reverse();
@@ -1402,9 +1406,7 @@ function computeLiveGlobalMonth(mk){
   BOUTIQUES.forEach(b=>{
     try{
       const data=JSON.parse(localStorage.getItem(b.storageKey)||'{}');
-      let caBout=0;
-      (data.salesHistory||[]).forEach(x=>{ if(x.month===mk) caBout += Number(x.amount)||0; });
-      caBout += Number((data.manualCA||{})[mk]||0);
+      const caBout=getRecordedMonthCA(data,mk).total;
       const r=calcResultForBoutique(caBout,mk,b);
       ca+=r.ca; comm+=r.commission; virement+=r.virementLBDA;
       loyer+=r.loyer; urssaf+=r.urssaf; net+=r.net;
