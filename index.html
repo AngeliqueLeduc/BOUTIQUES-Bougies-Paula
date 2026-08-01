@@ -228,6 +228,18 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .urssaf-check input{width:19px;height:19px;accent-color:var(--rose-fuchsia);}
 .urssaf-head{display:grid;grid-template-columns:minmax(0,1fr) 82px 62px 62px;gap:6px;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.25px;padding:0 0 5px;}
 .urssaf-note{font-size:11px;color:var(--text3);line-height:1.45;margin-bottom:12px;}
+.urssaf-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:9px 0 10px;}
+.urssaf-meta label{margin:0;text-transform:none;letter-spacing:0;font-size:10px;color:var(--text3);}
+.urssaf-meta input{padding:8px 9px;font-size:12px;margin-top:4px;}
+.urssaf-status{display:inline-block;font-size:11px;font-weight:600;padding:4px 9px;border-radius:20px;margin-bottom:8px;}
+.urssaf-status.todo{background:var(--red-bg);color:var(--red);}
+.urssaf-status.declared{background:var(--orange-bg);color:var(--orange);}
+.urssaf-status.paid{background:var(--green-bg);color:var(--green);}
+.urssaf-global-ca{font-size:10px;color:var(--text2);margin-top:2px;font-weight:500;}
+.urssaf-annual{background:var(--rose-pale2);border:1.5px solid var(--rose-border);border-radius:var(--radius);padding:14px;margin:0 0 14px;}
+.urssaf-annual-title{font-family:'DM Serif Display',serif;font-size:18px;margin-bottom:8px;}
+.urssaf-annual-row{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--border);font-size:13px;}
+.urssaf-annual-row strong{color:var(--rose-framboise);}
 
 </style>
 </head>
@@ -530,7 +542,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <div class="modal" style="max-width:620px">
     <div class="modal-handle"></div>
     <h2>🧾 Suivi URSSAF</h2>
-    <div class="urssaf-note">Montants calculés à 12,3 % du chiffre d’affaires de chaque boutique. Coche les étapes au fur et à mesure : les choix sont sauvegardés automatiquement sur cet appareil.</div>
+    <div class="urssaf-note">Montants calculés à 12,3 % du chiffre d’affaires de chaque boutique. Les dates sont modifiables : renseigne celles indiquées dans ton espace URSSAF. Les choix sont sauvegardés automatiquement sur cet appareil.</div>
     <div id="urssafTrackingContent" class="urssaf-content"></div>
     <div class="modal-footer">
       <button class="btn-save" onclick="document.getElementById('urssafModal').classList.remove('open')">Fermer</button>
@@ -1804,6 +1816,13 @@ function openUrssafTracking(){
   renderUrssafTracking();
   document.getElementById('urssafModal').classList.add('open');
 }
+function setUrssafMonthMeta(month,field,value){
+  const data=loadUrssafTracking();
+  if(!data[month]) data[month]={};
+  if(!data[month].__meta__) data[month].__meta__={};
+  data[month].__meta__[field]=value||'';
+  saveUrssafTracking(data);
+}
 function renderUrssafTracking(){
   const el=document.getElementById('urssafTrackingContent');
   if(!el) return;
@@ -1812,12 +1831,40 @@ function renderUrssafTracking(){
   byBoutique.forEach(x=>Object.keys(x.months).forEach(m=>monthSet.add(m)));
   const months=[...monthSet].sort().reverse();
   const tracking=loadUrssafTracking();
-  el.innerHTML=months.map(m=>{
-    let total=0;
+
+  const years=[...new Set(months.map(m=>m.slice(0,4)))].sort().reverse();
+  const annualHtml=years.map(year=>{
+    const yearMonths=months.filter(m=>m.startsWith(year));
+    let annualCA=0,annualUrssaf=0,paidUrssaf=0,declaredMonths=0;
+    yearMonths.forEach(m=>{
+      let monthAllDeclared=BOUTIQUES.length>0;
+      byBoutique.forEach(({b,months})=>{
+        const ca=Number(months[m]||0);
+        const amount=Number((ca*URSSAF_RATE).toFixed(2));
+        annualCA+=ca; annualUrssaf+=amount;
+        const st=(tracking[m]&&tracking[m][b.id])||{};
+        if(st.paid) paidUrssaf+=amount;
+        if(!st.declared) monthAllDeclared=false;
+      });
+      if(monthAllDeclared) declaredMonths++;
+    });
+    const remaining=Math.max(0,annualUrssaf-paidUrssaf);
+    return `<div class="urssaf-annual">
+      <div class="urssaf-annual-title">📊 Cumul ${year}</div>
+      <div class="urssaf-annual-row"><span>CA cumulé</span><strong>${annualCA.toFixed(2)} €</strong></div>
+      <div class="urssaf-annual-row"><span>URSSAF calculée</span><strong>${annualUrssaf.toFixed(2)} €</strong></div>
+      <div class="urssaf-annual-row"><span>URSSAF prélevée</span><strong>${paidUrssaf.toFixed(2)} €</strong></div>
+      <div class="urssaf-annual-row"><span>URSSAF restant à prélever</span><strong>${remaining.toFixed(2)} €</strong></div>
+      <div class="urssaf-annual-row"><span>Mois déclarés</span><strong>${declaredMonths} / ${yearMonths.length}</strong></div>
+    </div>`;
+  }).join('');
+
+  const monthsHtml=months.map(m=>{
+    let total=0,totalCA=0;
     const rows=byBoutique.map(({b,months})=>{
       const ca=Number(months[m]||0);
       const amount=Number((ca*URSSAF_RATE).toFixed(2));
-      total+=amount;
+      totalCA+=ca; total+=amount;
       const st=(tracking[m]&&tracking[m][b.id])||{};
       return `<div class="urssaf-row">
         <div class="urssaf-name">${b.emoji||'🏪'} ${b.nom}<div style="font-size:10px;color:var(--text3);margin-top:2px">CA ${ca.toFixed(2)} €</div></div>
@@ -1828,18 +1875,26 @@ function renderUrssafTracking(){
     }).join('');
     const allDeclared=BOUTIQUES.length>0&&BOUTIQUES.every(b=>tracking[m]&&tracking[m][b.id]&&tracking[m][b.id].declared);
     const allPaid=BOUTIQUES.length>0&&BOUTIQUES.every(b=>tracking[m]&&tracking[m][b.id]&&tracking[m][b.id].paid);
+    const meta=(tracking[m]&&tracking[m].__meta__)||{};
+    const status=allPaid?'<span class="urssaf-status paid">🟢 Prélevé</span>':allDeclared?'<span class="urssaf-status declared">🟠 Déclaré — prélèvement à suivre</span>':'<span class="urssaf-status todo">🔴 À déclarer</span>';
     return `<div class="urssaf-month">
       <div class="urssaf-month-title">${fmtMonth(m)}</div>
+      ${status}
+      <div class="urssaf-meta">
+        <label>Date limite / prévue de déclaration<input type="date" value="${meta.declarationDate||''}" onchange="setUrssafMonthMeta('${m}','declarationDate',this.value)"></label>
+        <label>Date prévue de prélèvement<input type="date" value="${meta.paymentDate||''}" onchange="setUrssafMonthMeta('${m}','paymentDate',this.value)"></label>
+      </div>
       <div class="urssaf-head"><div>Boutique</div><div style="text-align:right">URSSAF</div><div style="text-align:center">Déclaré</div><div style="text-align:center">Prélevé</div></div>
       ${rows}
       <div class="urssaf-row global">
-        <div class="urssaf-name">🌸 Total global</div>
+        <div class="urssaf-name">🌸 Total global<div class="urssaf-global-ca">CA global : ${totalCA.toFixed(2)} €</div></div>
         <div class="urssaf-amount">${total.toFixed(2)} €</div>
         <div class="urssaf-check"><input type="checkbox" ${allDeclared?'checked':''} onchange="setUrssafGlobalStatus('${m}','declared',this.checked)" title="Tout marquer déclaré"></div>
         <div class="urssaf-check"><input type="checkbox" ${allPaid?'checked':''} onchange="setUrssafGlobalStatus('${m}','paid',this.checked)" title="Tout marquer prélevé"></div>
       </div>
     </div>`;
   }).join('');
+  el.innerHTML=annualHtml+monthsHtml;
 }
 
 // ═══════════════════════════════════════════════════════════
