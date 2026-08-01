@@ -413,6 +413,26 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div style="font-size:11px;color:var(--text3);margin-top:6px;font-style:italic">
       Le loyer du 1er mois s'applique uniquement au mois d'ouverture. Le loyer standard s'applique dès le mois suivant.
     </div>
+
+    <div style="margin-top:18px;padding:14px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm)">
+      <div style="font-family:'DM Serif Display',serif;font-size:17px;color:var(--text);margin-bottom:6px">📅 Conditions spécifiques par mois</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px">
+        Utilise cette zone lorsqu'une boutique change de loyer ou de commission selon le mois.
+        Les valeurs mensuelles remplacent uniquement les paramètres standards pour le mois choisi.
+      </div>
+      <label>Mois concerné</label>
+      <input type="month" id="p-cond-month" onchange="loadMonthlyConditionFields()">
+      <label>Commission de ce mois (%)</label>
+      <input type="number" id="p-cond-commission" step="0.1" min="0" max="100" inputmode="decimal" placeholder="Ex : 25">
+      <label>Loyer de ce mois (€)</label>
+      <input type="number" id="p-cond-loyer" step="0.01" min="0" inputmode="decimal" placeholder="Ex : 0">
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button type="button" class="btn-save" style="flex:1;padding:11px" onclick="saveMonthlyCondition()">Enregistrer ce mois</button>
+        <button type="button" class="btn-cancel" style="flex:1;padding:11px;color:var(--red);border-color:var(--red)" onclick="deleteMonthlyCondition()">Supprimer ce mois</button>
+      </div>
+      <div id="p-cond-list" style="margin-top:10px"></div>
+    </div>
+
     <div class="modal-footer">
       <button class="btn-cancel" onclick="document.getElementById('paramsBoutiqueModal').classList.remove('open')">Annuler</button>
       <button class="btn-save" onclick="saveParamsBoutique()">Enregistrer</button>
@@ -1160,7 +1180,7 @@ function renderResult(){
     const annualCard=`<div class="result-card" style="border:2px solid var(--amber);background:var(--amber-pale);margin-bottom:14px">
       <div class="result-header"><span class="result-month" style="font-size:19px">📅 Cumul ${year}</span><span class="result-net ${cumClass}" style="font-size:20px">${cumNet.toFixed(2)} €</span></div>
       <div class="result-row"><span class="result-row-lbl">CA total ${year}</span><span class="result-row-val">${cumCA.toFixed(2)} €</span></div>
-      <div class="result-row"><span class="result-row-lbl">− Commissions ${(BOUTIQUES[currentBoutique].commission*100).toFixed(0)}%</span><span class="result-row-val minus">− ${cumComm.toFixed(2)} €</span></div>
+      <div class="result-row"><span class="result-row-lbl">− Commissions ${(getBoutiqueMonthlyTerms(BOUTIQUES[currentBoutique],mY[0]).tauxCommission*100).toFixed(1)}%</span><span class="result-row-val minus">− ${cumComm.toFixed(2)} €</span></div>
       <div class="result-row"><span class="result-row-lbl">− Loyers</span><span class="result-row-val minus">− ${cumLoyer.toFixed(2)} €</span></div>
       <div class="result-row"><span class="result-row-lbl">− URSSAF 12,3%</span><span class="result-row-val urssaf">− ${cumUrssaf.toFixed(2)} €</span></div>
       <div class="result-row total-line" style="background:rgba(194,24,91,0.12)"><span class="result-row-lbl" style="font-weight:600">💶 Reste net annuel</span><span class="result-net ${cumClass}" style="font-size:18px;font-weight:600">${cumNet.toFixed(2)} €</span></div>
@@ -1177,7 +1197,7 @@ function renderResult(){
       return `<div class="result-card">
         <div class="result-header"><span class="result-month">${fmtMonth(m)}</span><span class="result-net ${nc}">${r.net.toFixed(2)} €</span></div>
         <div class="result-row"><span class="result-row-lbl">CA du mois</span><span class="result-row-val">${r.ca.toFixed(2)} €</span></div>
-        <div class="result-row"><span class="result-row-lbl">− Commission ${(BOUTIQUES[currentBoutique].commission*100).toFixed(0)}%</span><span class="result-row-val minus">− ${r.commission.toFixed(2)} €</span></div>
+        <div class="result-row"><span class="result-row-lbl">− Commission ${(r.tauxCommission*100).toFixed(1)}%${r.conditionsMensuelles?' (mois)':''}</span><span class="result-row-val minus">− ${r.commission.toFixed(2)} €</span></div>
         <div class="result-row" style="background:rgba(194,24,91,0.07)"><span class="result-row-lbl" style="font-weight:500">💳 Virement</span><span class="result-row-val" style="color:var(--amber-dark);font-weight:600">${r.virementLBDA.toFixed(2)} €</span></div>
         <div class="result-row"><span class="result-row-lbl">− Loyer${loyerNote}</span><span class="result-row-val minus">− ${r.loyer.toFixed(2)} €</span></div>
         <div class="result-info">Base avant URSSAF : ${r.caApres.toFixed(2)} €</div>
@@ -1432,7 +1452,7 @@ function renderDashboard(){
     <div class="dash-card"><div class="dash-title">⭐ Produits les plus vendus</div>${topProducts.length?topProducts.map((p,i)=>`<div class="rank-row"><div class="rank-num">${i+1}</div><div>${p.nom}</div><div style="text-align:right;font-weight:600">${p.qty} vente${p.qty>1?'s':''}<div style="font-size:11px;color:var(--text3)">${p.ca.toFixed(2)} €</div></div></div>`).join(''):'<div class="empty" style="padding:1rem 0">Aucune vente détaillée ce mois-ci.</div>'}</div>
     <div class="dash-card" style="border:2px solid var(--amber);background:var(--amber-pale);margin-bottom:14px">
       <div class="dash-title">📊 Vue globale — ${fmtMonth(curKey)}</div>
-      <div class="dash-row"><span class="dash-lbl">Taux par boutique</span><span class="dash-val">${BOUTIQUES.map(b=>`${b.nom.split('—')[0].trim()} ${(Number(b.commission)||0)*100}%`).join(' · ')}</span></div>
+      <div class="dash-row"><span class="dash-lbl">Taux par boutique</span><span class="dash-val">${BOUTIQUES.map(b=>{const t=getBoutiqueMonthlyTerms(b,curKey);return `${b.nom.split('—')[0].trim()} ${(t.tauxCommission*100).toFixed(1)}%`;}).join(' · ')}</span></div>
       <div class="dash-row"><span class="dash-lbl">CA total ce mois</span><span class="dash-val ok">${totalMois.toFixed(2)} €</span></div>
       <div class="dash-row"><span class="dash-lbl">− Commissions (total)</span><span class="dash-val" style="color:var(--red)">− ${totalComm.toFixed(2)} €</span></div>
       <div class="dash-row" style="background:rgba(194,24,91,0.07)"><span class="dash-lbl" style="font-weight:500">💳 Virements attendus</span><span class="dash-val" style="color:var(--amber-dark);font-weight:600">${totalVirement.toFixed(2)} €</span></div>
@@ -1462,7 +1482,7 @@ function renderDashboard(){
     <div class="dash-card">
       <div class="dash-title">${l.b.emoji} ${l.b.nom} — <span style="font-size:13px;font-family:'DM Sans',sans-serif;font-weight:400;color:var(--text3)">${fmtMonth(curKey)}</span></div>
       <div class="dash-row"><span class="dash-lbl">CA du mois</span><span class="dash-val ok">${r.ca.toFixed(2)} €</span></div>
-      <div class="dash-row"><span class="dash-lbl">Taux de commission appliqué</span><span class="dash-val">${(l.b.commission*100).toFixed(0)}%</span></div>
+      <div class="dash-row"><span class="dash-lbl">Taux de commission appliqué${r.conditionsMensuelles?' (spécifique au mois)':''}</span><span class="dash-val">${(r.tauxCommission*100).toFixed(1)}%</span></div>
       <div class="dash-row"><span class="dash-lbl">− Commission</span><span class="dash-val" style="color:var(--red)">− ${r.commission.toFixed(2)} €</span></div>
       <div class="dash-row" style="background:rgba(194,24,91,0.07)"><span class="dash-lbl" style="font-weight:500">💳 Virement</span><span class="dash-val" style="color:var(--amber-dark);font-weight:600">${r.virementLBDA.toFixed(2)} €</span></div>
       <div class="dash-row"><span class="dash-lbl">− Loyer${loyerNote}</span><span class="dash-val" style="color:var(--red)">− ${r.loyer.toFixed(2)} €</span></div>
@@ -1564,20 +1584,41 @@ function renderGlobalHistSection(curKey){
   </div>`;
 }
 
-function calcResultForBoutique(ca,mk,b){
-  let loyer = b.loyer;
-  if(b.ouverture && b.loyerPremierMois !== null && b.loyerPremierMois !== undefined){
+function getBoutiqueMonthlyTerms(b,mk){
+  const conditions = (b && b.monthlyConditions) || {};
+  const monthly = conditions[mk] || {};
+
+  let loyer = Number(b && b.loyer) || 0;
+  let tauxCommission = Number(b && b.commission) || 0;
+
+  // Ancienne règle du loyer du premier mois
+  if(b && b.ouverture && b.loyerPremierMois !== null && b.loyerPremierMois !== undefined){
     const ouv = new Date(b.ouverture);
     const ouvKey = ouv.getFullYear()+'-'+String(ouv.getMonth()+1).padStart(2,'0');
-    if(mk === ouvKey) loyer = b.loyerPremierMois;
+    if(mk === ouvKey) loyer = Number(b.loyerPremierMois) || 0;
   }
-  const tauxCommission = Number(b.commission) || 0;
+
+  // Une condition mensuelle est prioritaire, y compris lorsqu'elle vaut zéro.
+  if(Object.prototype.hasOwnProperty.call(monthly,'loyer')){
+    loyer = Number(monthly.loyer) || 0;
+  }
+  if(Object.prototype.hasOwnProperty.call(monthly,'commission')){
+    tauxCommission = Number(monthly.commission) || 0;
+  }
+
+  return {loyer,tauxCommission,isMonthlyOverride:!!conditions[mk]};
+}
+
+function calcResultForBoutique(ca,mk,b){
+  const terms = getBoutiqueMonthlyTerms(b,mk);
+  const loyer = terms.loyer;
+  const tauxCommission = terms.tauxCommission;
   const commission   = parseFloat((ca * tauxCommission).toFixed(2));
   const virementLBDA = parseFloat((ca - commission).toFixed(2));
   const urssaf       = parseFloat((ca * URSSAF_RATE).toFixed(2));
   const caApres      = parseFloat((ca - commission - loyer).toFixed(2));
   const net          = parseFloat((caApres - urssaf).toFixed(2));
-  return {ca, commission, virementLBDA, loyer, urssaf, caApres, net};
+  return {ca, commission, virementLBDA, loyer, urssaf, caApres, net, tauxCommission, conditionsMensuelles:terms.isMonthlyOverride};
 }
 
 function calcResult(ca,mk){
@@ -2008,7 +2049,86 @@ function openParamsBoutique(){
   document.getElementById('p-jour-marche').value     = b.jourMarche === 0 || b.jourMarche ? String(b.jourMarche) : '';
   toggleParamTypeFields();
   document.getElementById('p-loyer-premier').value  = b.loyerPremierMois !== null && b.loyerPremierMois !== undefined ? b.loyerPremierMois : '';
+  const currentMonth = monthKey(new Date());
+  document.getElementById('p-cond-month').value = currentMonth;
+  loadMonthlyConditionFields();
+  renderMonthlyConditionsList();
   document.getElementById('paramsBoutiqueModal').classList.add('open');
+}
+
+function loadMonthlyConditionFields(){
+  const b = BOUTIQUES[currentBoutique];
+  const mk = document.getElementById('p-cond-month').value;
+  const c = b && b.monthlyConditions && mk ? b.monthlyConditions[mk] : null;
+  document.getElementById('p-cond-commission').value =
+    c && Object.prototype.hasOwnProperty.call(c,'commission') ? (Number(c.commission)*100).toFixed(1) : '';
+  document.getElementById('p-cond-loyer').value =
+    c && Object.prototype.hasOwnProperty.call(c,'loyer') ? Number(c.loyer) : '';
+}
+
+function renderMonthlyConditionsList(){
+  const b = BOUTIQUES[currentBoutique];
+  const el = document.getElementById('p-cond-list');
+  if(!el || !b) return;
+  const entries = Object.entries(b.monthlyConditions || {}).sort((a,b)=>b[0].localeCompare(a[0]));
+  if(!entries.length){
+    el.innerHTML = '<div style="font-size:11px;color:var(--text3)">Aucune condition mensuelle enregistrée.</div>';
+    return;
+  }
+  el.innerHTML = entries.map(([mk,c])=>{
+    const comm = Object.prototype.hasOwnProperty.call(c,'commission') ? (Number(c.commission)*100).toFixed(1)+' %' : 'standard';
+    const loyer = Object.prototype.hasOwnProperty.call(c,'loyer') ? Number(c.loyer).toFixed(2)+' €' : 'standard';
+    return `<div onclick="document.getElementById('p-cond-month').value='${mk}';loadMonthlyConditionFields()"
+      style="cursor:pointer;display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-top:1px solid var(--border);font-size:12px">
+      <span style="font-weight:500">${fmtMonth(mk)}</span>
+      <span style="color:var(--text3)">Commission ${comm} · Loyer ${loyer}</span>
+    </div>`;
+  }).join('');
+}
+
+function saveMonthlyCondition(){
+  const b = BOUTIQUES[currentBoutique];
+  const mk = document.getElementById('p-cond-month').value;
+  const commRaw = document.getElementById('p-cond-commission').value;
+  const loyerRaw = document.getElementById('p-cond-loyer').value;
+  if(!b || !mk){ showToast('⚠️ Choisis un mois'); return; }
+  if(commRaw === '' && loyerRaw === ''){ showToast('⚠️ Saisis une commission ou un loyer'); return; }
+
+  const condition = {};
+  if(commRaw !== ''){
+    const comm = Number(commRaw);
+    if(!Number.isFinite(comm) || comm < 0 || comm > 100){ showToast('⚠️ Commission mensuelle invalide'); return; }
+    condition.commission = comm / 100;
+  }
+  if(loyerRaw !== ''){
+    const loyer = Number(loyerRaw);
+    if(!Number.isFinite(loyer) || loyer < 0){ showToast('⚠️ Loyer mensuel invalide'); return; }
+    condition.loyer = loyer;
+  }
+
+  if(!b.monthlyConditions) b.monthlyConditions = {};
+  b.monthlyConditions[mk] = condition;
+  saveBoutiquesConfig();
+  renderMonthlyConditionsList();
+  renderResult();
+  if(currentBoutique >= BOUTIQUES.length) renderDashboard();
+  showToast(`✓ Conditions de ${fmtMonth(mk)} enregistrées`);
+}
+
+function deleteMonthlyCondition(){
+  const b = BOUTIQUES[currentBoutique];
+  const mk = document.getElementById('p-cond-month').value;
+  if(!b || !mk || !b.monthlyConditions || !b.monthlyConditions[mk]){
+    showToast('Aucune condition mensuelle à supprimer');
+    return;
+  }
+  if(!confirm(`Supprimer les conditions spécifiques de ${fmtMonth(mk)} ?`)) return;
+  delete b.monthlyConditions[mk];
+  saveBoutiquesConfig();
+  loadMonthlyConditionFields();
+  renderMonthlyConditionsList();
+  renderResult();
+  showToast(`Conditions de ${fmtMonth(mk)} supprimées`);
 }
 
 function saveParamsBoutique(){
