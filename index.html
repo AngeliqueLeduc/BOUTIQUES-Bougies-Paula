@@ -338,9 +338,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div class="modal-handle"></div>
     <h2>Modifier les articles vendus</h2>
     <div id="ess-product-label" style="font-size:13px;color:var(--text3);margin-bottom:8px"></div>
-    <input type="hidden" id="ess-month">
+    <input type="hidden" id="ess-original-month">
     <input type="hidden" id="ess-identity">
-    <label>Mois</label><input type="month" id="ess-month-display" disabled>
+    <label>Mois de la vente</label><input type="month" id="ess-month-display">
     <label>Quantité vendue</label><input type="number" id="ess-qty" min="0" step="1" inputmode="numeric">
     <label>Prix unitaire réellement vendu (€)</label><input type="number" id="ess-price" min="0" step="0.01" inputmode="decimal">
     <div style="font-size:11px;color:var(--text3);margin-top:6px;font-style:italic">La correction met à jour le CA du mois, le cumul annuel et le CA total. Une quantité à 0 supprime cette vente du mois.</div>
@@ -1004,7 +1004,7 @@ function openStatSaleEditor(month, encodedIdentity){
     const p=products.find(x=>saleIdentityKey(x.ref,x.nom)===identity);
     if(p){ ref=p.ref||''; nom=p.nom||p.ref||'Article'; qty=Number(p.sold)||0; amount=qty*(Number(p.prix)||0); }
   }
-  document.getElementById('ess-month').value=month;
+  document.getElementById('ess-original-month').value=month;
   document.getElementById('ess-month-display').value=month;
   document.getElementById('ess-identity').value=identity;
   document.getElementById('ess-product-label').textContent=nom||ref||'Article';
@@ -1014,25 +1014,40 @@ function openStatSaleEditor(month, encodedIdentity){
 }
 
 function saveStatSaleEdit(){
-  const month=document.getElementById('ess-month').value;
+  const originalMonth=document.getElementById('ess-original-month').value;
+  const newMonth=document.getElementById('ess-month-display').value;
   const identity=document.getElementById('ess-identity').value;
   const qty=Math.max(0,Math.floor(Number(document.getElementById('ess-qty').value)||0));
   const price=Number(document.getElementById('ess-price').value)||0;
-  if(!month || price<0){ showToast('⚠️ Valeurs invalides'); return; }
+  if(!originalMonth || !newMonth || price<0){ showToast('⚠️ Valeurs invalides'); return; }
 
-  const existing=salesHistory.filter(v=>v.month===month && saleIdentityKey(v.ref,v.nom)===identity);
+  // Rechercher les ventes dans leur mois d'origine, même si le mois est modifié dans la fenêtre.
+  const existing=salesHistory.filter(v=>v.month===originalMonth && saleIdentityKey(v.ref,v.nom)===identity);
   const oldQty=existing.reduce((sum,v)=>sum+(Number(v.qty)||0),0);
   const sample=existing[0];
   const prod=products.find(p=>saleIdentityKey(p.ref,p.nom)===identity);
   const ref=sample?.ref||prod?.ref||'';
   const nom=sample?.nom||prod?.nom||ref||'Article';
 
-  salesHistory=salesHistory.filter(v=>!(v.month===month && saleIdentityKey(v.ref,v.nom)===identity));
+  // Retirer l'ancien enregistrement du mois d'origine.
+  salesHistory=salesHistory.filter(v=>!(v.month===originalMonth && saleIdentityKey(v.ref,v.nom)===identity));
+
   if(qty>0){
-    const date=(sample&&sample.date)||new Date(month+'-01T12:00:00').toISOString();
-    salesHistory.push({month,ref,nom,qty,amount:qty*price,date});
+    // Conserver autant que possible le jour de vente, mais l'affecter au nouveau mois.
+    let day=1;
+    if(sample?.date){
+      const oldDate=new Date(sample.date);
+      if(!isNaN(oldDate)) day=oldDate.getDate();
+    }
+    const [year,monthNumber]=newMonth.split('-').map(Number);
+    const lastDay=new Date(year,monthNumber,0).getDate();
+    day=Math.min(Math.max(1,day),lastDay);
+    const date=new Date(year,monthNumber-1,day,12,0,0).toISOString();
+    salesHistory.push({month:newMonth,ref,nom,qty,amount:qty*price,date});
   }
 
+  // Le stock ne change que si la quantité totale vendue est modifiée.
+  // Un simple déplacement de juillet vers août ne modifie donc pas le stock.
   if(prod){
     const delta=qty-oldQty;
     prod.sold=Math.max(0,(Number(prod.sold)||0)+delta);
@@ -1042,7 +1057,7 @@ function saveStatSaleEdit(){
   saveData();
   document.getElementById('editStatSaleModal').classList.remove('open');
   renderStats(); updateStats();
-  showToast('✓ Vente et chiffre d’affaires corrigés');
+  showToast(originalMonth===newMonth?'✓ Vente et chiffre d’affaires corrigés':'✓ Vente déplacée vers '+fmtMonth(newMonth));
 }
 
 function openManualCA(){ const now=new Date(); document.getElementById('mca-month').value=monthKey(now); document.getElementById('mca-amount').value=manualCA[monthKey(now)]||''; document.getElementById('manualCAModal').classList.add('open'); }
