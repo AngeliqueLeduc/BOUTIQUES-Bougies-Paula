@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="Bougies Paula">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>Bougies Paula V8.2 — Résultat sans CA fantôme</title>
+<title>Bougies Paula V8.3 — Boutiques sur plusieurs lignes</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -62,7 +62,16 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .hbtn:active{background:rgba(255,255,255,0.3);}
 
 /* BOUTIQUE SELECTOR */
-.boutique-bar{display:flex;gap:6px;padding:10px 12px 0;background:var(--rose-framboise);}
+.boutique-bar{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:6px;
+  padding:10px 12px 8px;
+  background:var(--rose-framboise);
+  overflow:visible;
+}
+.boutique-bar .b-btn{flex:0 0 auto;}
 .b-btn{flex:1;text-align:center;padding:8px 4px;border-radius:var(--radius-sm);font-size:12px;color:rgba(255,255,255,0.6);background:rgba(255,255,255,0.10);border:1px solid rgba(255,255,255,0.18);cursor:pointer;font-family:'DM Sans',sans-serif;}
 .b-btn.active{background:var(--rose-bonbon);color:var(--rose-framboise);border-color:var(--rose-bonbon);font-weight:600;}
 
