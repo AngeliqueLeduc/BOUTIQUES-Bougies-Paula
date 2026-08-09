@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="Bougies Paula">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>Bougies Paula V8.4 — Graphiques projection</title>
+<title>Bougies Paula V8.6 — Comparaison à date et écart €</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -1866,30 +1866,105 @@ function refreshProjectionCA(){
   document.getElementById('proj-ca').value=ca>0?ca.toFixed(2):'';
 }
 
+
 function globalCAForMonth(mk){
   return BOUTIQUES.reduce((s,b,i)=>boutiqueExistsInMonth(b,mk)?s+getBoutiqueMonthCA(i,mk):s,0);
 }
-function projectionShiftMonth(mk,n){
-  const p=mk.split('-').map(Number),d=new Date(p[0],p[1]-1+n,1);
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+
+function globalCAUntilDate(targetDate){
+  const mk=monthKey(targetDate);
+  const cutoffDay=targetDate.getDate();
+  let total=0;
+
+  BOUTIQUES.forEach((b,i)=>{
+    if(!boutiqueExistsInMonth(b,mk)) return;
+    try{
+      const raw=localStorage.getItem(b.storageKey);
+      if(!raw) return;
+      const data=JSON.parse(raw);
+
+      (data.salesHistory||[]).forEach(v=>{
+        if(v.month!==mk) return;
+
+        // Si la vente possède une vraie date, on ne prend que les ventes
+        // jusqu'au jour équivalent.
+        if(v.date){
+          const d=new Date(v.date);
+          if(!isNaN(d) && d.getDate()<=cutoffDay){
+            total+=Number(v.amount)||0;
+          }
+        }else{
+          // Anciennes ventes sans date précise : elles restent comptées
+          // dans le mois afin de ne pas perdre l'historique existant.
+          total+=Number(v.amount)||0;
+        }
+      });
+
+      // Un CA forfaitaire n'a pas de date journalière précise :
+      // il est inclus dans le mois, mais signalé comme tel.
+      total+=Number((data.manualCA||{})[mk]||0);
+    }catch(e){}
+  });
+
+  return total;
 }
-function projectionYearAgo(mk){const p=mk.split('-');return (Number(p[0])-1)+'-'+p[1];}
+
+function projectionShiftMonthDate(date,monthsDelta){
+  const targetYear=date.getFullYear();
+  const targetMonth=date.getMonth()+monthsDelta;
+  const base=new Date(targetYear,targetMonth,1);
+  const lastDay=new Date(base.getFullYear(),base.getMonth()+1,0).getDate();
+  return new Date(base.getFullYear(),base.getMonth(),Math.min(date.getDate(),lastDay));
+}
+
+function projectionPreviousYearDate(date){
+  const y=date.getFullYear()-1,m=date.getMonth();
+  const lastDay=new Date(y,m+1,0).getDate();
+  return new Date(y,m,Math.min(date.getDate(),lastDay));
+}
+
 function projectionChartCard(title,sub,lab1,val1,lab2,val2){
   val1=Number(val1)||0; val2=Number(val2)||0;
   const max=Math.max(val1,val2,1),p1=val1/max*100,p2=val2/max*100;
   const delta=val2===0?(val1===0?'—':'Nouveau'):(((val1-val2)/val2)*100).toFixed(1)+' %';
+  const ecart=val1-val2;
+  const ecartTexte=(ecart>0?'+ ':'')+ecart.toFixed(2)+' €';
   return `<div class="proj-chart-card"><div class="proj-chart-title">${title}</div><div class="proj-chart-sub">${sub}</div>
   <div class="proj-bar-row"><div class="proj-bar-label">${lab1}</div><div class="proj-bar-track"><div class="proj-bar-fill" style="width:${p1}%"></div></div><div class="proj-bar-value">${val1.toFixed(2)} €</div></div>
   <div class="proj-bar-row"><div class="proj-bar-label">${lab2}</div><div class="proj-bar-track"><div class="proj-bar-fill old" style="width:${p2}%"></div></div><div class="proj-bar-value">${val2.toFixed(2)} €</div></div>
-  <div class="proj-delta">Évolution : <strong>${delta}</strong></div></div>`;
+  <div class="proj-delta">
+    Évolution à date : <strong>${delta}</strong>
+    <span style="display:inline-block;margin-left:10px">Écart : <strong>${ecartTexte}</strong></span>
+  </div></div>`;
 }
+
 function projectionGlobalCharts(date){
-  const mk=monthKey(date),prev=projectionShiftMonth(mk,-1),ago=projectionYearAgo(mk);
+  const currentDate=date;
+  const previousMonthDate=projectionShiftMonthDate(date,-1);
+  const previousYearDate=projectionPreviousYearDate(date);
+
+  const currentCA=globalCAUntilDate(currentDate);
+  const previousMonthCA=globalCAUntilDate(previousMonthDate);
+  const previousYearCA=globalCAUntilDate(previousYearDate);
+
+  const day=currentDate.getDate();
+
   return `<div class="proj-charts">
-    ${projectionChartCard('📊 Mois en cours / mois précédent','CA global réellement enregistré',fmtMonth(mk),globalCAForMonth(mk),fmtMonth(prev),globalCAForMonth(prev))}
-    ${projectionChartCard('📅 Même mois, année précédente','Comparaison annuelle du CA global',fmtMonth(mk),globalCAForMonth(mk),fmtMonth(ago),globalCAForMonth(ago))}
+    ${projectionChartCard(
+      '📊 Évolution à date : mois précédent',
+      `Comparaison du CA global du 1er au ${day} du mois`,
+      `${fmtMonth(monthKey(currentDate))} au ${day}`,currentCA,
+      `${fmtMonth(monthKey(previousMonthDate))} au ${previousMonthDate.getDate()}`,previousMonthCA
+    )}
+    ${projectionChartCard(
+      '📅 Évolution à date : année précédente',
+      `Comparaison du même mois à la même date`,
+      `${fmtMonth(monthKey(currentDate))} au ${day}`,currentCA,
+      `${fmtMonth(monthKey(previousYearDate))} au ${previousYearDate.getDate()}`,previousYearCA
+    )}
   </div>`;
 }
+
 function calculateProjection(){
   const result=document.getElementById('projectionResult'),value=document.getElementById('proj-boutique').value,date=projectionDateToLocal(document.getElementById('proj-date').value),entered=Number(document.getElementById('proj-ca').value),exclude=document.getElementById('proj-exclude-sundays').checked;
   if(!date||!Number.isFinite(entered)||entered<0){result.innerHTML='<div style="font-size:13px;color:var(--text3);text-align:center;padding:12px">Renseigne une date et un chiffre d’affaires.</div>';return;}
